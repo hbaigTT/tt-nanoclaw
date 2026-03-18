@@ -1,0 +1,29 @@
+# Role and RoleBinding must be in kube-system (where etcd pods live).
+# A Role in monitoring cannot authorize access to kube-system resources.
+# The ServiceAccount lives in monitoring (where the tt-nanoclaw pod runs).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tt-nanoclaw
+  namespace: kube-system
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tt-nanoclaw
+  namespace: kube-system
+subjects:
+  - kind: ServiceAccount
+    name: tt-nanoclaw
+    namespace: monitoring
+roleRef:
+  kind: Role
+  name: tt-nanoclaw
+  apiGroup: rbac.authorization.k8s.io

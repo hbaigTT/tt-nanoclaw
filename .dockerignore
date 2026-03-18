@@ -1,0 +1,11 @@
+node_modules/
+dist/
+store/
+data/
+logs/
+.git/
+.github/
+.env
+*.keys.json
+.DS_Store
+.nanoclaw/

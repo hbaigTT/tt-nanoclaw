@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tt-nanoclaw
+  namespace: monitoring
+  labels:
+    app: tt-nanoclaw
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tt-nanoclaw
+  template:
+    metadata:
+      labels:
+        app: tt-nanoclaw
+    spec:
+      serviceAccountName: tt-nanoclaw
+      containers:
+        - name: tt-nanoclaw
+          image: ghcr.io/tenstorrent/tt-nanoclaw:latest
+          ports:
+            - containerPort: 3000
+              protocol: TCP
+          env:
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: tt-nanoclaw
+                  key: ANTHROPIC_API_KEY
+            - name: SLACK_WEBHOOK_URL
+              valueFrom:
+                secretKeyRef:
+                  name: tt-nanoclaw
+                  key: SLACK_WEBHOOK_URL
+          # No KUBECONFIG — in-cluster ServiceAccount auth is automatic
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
