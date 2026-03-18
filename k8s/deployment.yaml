@@ -16,9 +16,12 @@ spec:
         app: tt-nanoclaw
     spec:
       serviceAccountName: tt-nanoclaw
+      imagePullSecrets:
+        - name: ghcr-creds
       containers:
         - name: tt-nanoclaw
-          image: ghcr.io/tenstorrent/tt-nanoclaw:latest
+          # Update this to match your ghcr.io org/repo (workflow pushes to ghcr.io/<github.repository>)
+          image: ghcr.io/hbaigtt/tt-nanoclaw:latest
           ports:
             - containerPort: 3000
               protocol: TCP
