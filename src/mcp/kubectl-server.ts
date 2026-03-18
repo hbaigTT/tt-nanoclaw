@@ -113,7 +113,10 @@ server.tool(
       .string()
       .default('kube-system')
       .describe('Namespace (validated against allowlist)'),
-    labels: z.string().optional().describe('Label selector, e.g. component=etcd'),
+    labels: z
+      .string()
+      .optional()
+      .describe('Label selector, e.g. component=etcd'),
     field: z.string().optional().describe('Field selector'),
     output: z
       .enum(['wide', 'json', 'yaml', 'name'])
@@ -167,7 +170,10 @@ server.tool(
       .default('kube-system')
       .describe('Namespace (validated against allowlist)'),
     tail: z.number().default(200).describe('Number of lines from the end'),
-    container: z.string().optional().describe('Container name (if multi-container pod)'),
+    container: z
+      .string()
+      .optional()
+      .describe('Container name (if multi-container pod)'),
     previous: z
       .boolean()
       .default(false)
