@@ -15,7 +15,7 @@ tt-nanoclaw pod (monitoring namespace)
   │
   ├── Parses alert payload, deduplicates by fingerprint
   ├── Matches alertname to registered group + runbook
-  ├── Runs Claude Agent SDK in-process with kubectl access
+  ├── Runs Claude Agent SDK in-process with MCP kubectl tools
   │
   ▼
 Agent investigates → decides: auto-resolve | escalate
@@ -24,7 +24,7 @@ Agent investigates → decides: auto-resolve | escalate
   └── Escalate: posts structured diagnosis to Slack
 ```
 
-No container nesting. The agent runs directly in the tt-nanoclaw pod. RBAC scopes what kubectl can do — the ServiceAccount limits access regardless of isolation.
+No container nesting. The agent runs directly in the tt-nanoclaw pod. The agent has **no Bash access** — all cluster interaction goes through 4 MCP tools (`kubectl_get`, `kubectl_describe`, `kubectl_logs`, `kubectl_exec`) with structured, validated parameters. `kubectl_exec` is restricted to allowed pod patterns and binaries. RBAC is the second enforcement layer.
 
 ## Current Scope (POC)
 
@@ -40,6 +40,8 @@ The first alert being automated is **`etcdDatabaseHighFragmentationRatio`**:
 src/
 ├── index.ts                         # Orchestrator: message loop, agent invocation
 ├── agent-runner.ts                  # In-process Claude Agent SDK wrapper
+├── mcp/
+│   └── kubectl-server.ts            # MCP server: validated kubectl verb tools
 ├── channels/
 │   ├── registry.ts                  # Channel self-registration
 │   └── alertmanager/
@@ -61,7 +63,7 @@ test/fixtures/                       # Alertmanager payload fixtures
 ```bash
 npm install
 npm run build
-npm test            # 88 tests (unit + integration)
+npm test            # 106 tests (unit + integration)
 npm run dev         # Run with hot reload
 ```
 
@@ -138,7 +140,7 @@ git fetch upstream main
 git merge upstream/main
 ```
 
-Fork-specific changes are in `src/channels/alertmanager/`, `src/agent-runner.ts`, `groups/alerts/`, and `k8s/` to minimize merge conflicts.
+Fork-specific changes are in `src/channels/alertmanager/`, `src/mcp/`, `src/agent-runner.ts`, `groups/alerts/`, and `k8s/` to minimize merge conflicts.
 
 ## License
 
