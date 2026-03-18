@@ -1,11 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 import { query } from '@anthropic-ai/claude-agent-sdk';
 
 import { AGENT_TIMEOUT } from './config.js';
 import { resolveGroupFolderPath } from './group-folder.js';
 import { logger } from './logger.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export interface AgentInput {
   prompt: string;
@@ -48,10 +51,19 @@ export async function runInProcessAgent(
         prompt: input.prompt,
         options: {
           cwd: groupDir,
-          // Restrict to Bash only — agent needs kubectl/etcdctl, nothing else for POC
-          tools: ['Bash'],
+          // No built-in tools — all cluster access via the kubectl MCP server.
+          // The agent cannot run arbitrary commands, only the validated kubectl
+          // verb tools (get, describe, logs, exec) we define.
+          tools: [],
           permissionMode: 'bypassPermissions',
           allowDangerouslySkipPermissions: true,
+          mcpServers: {
+            kubectl: {
+              command: 'node',
+              args: [path.join(__dirname, 'mcp', 'kubectl-server.js')],
+              env: process.env as Record<string, string>,
+            },
+          },
           // Append CLAUDE.md content as extra system context
           systemPrompt: claudeMd
             ? {
