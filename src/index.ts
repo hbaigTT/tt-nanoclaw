@@ -14,20 +14,19 @@ import {
 } from './channels/registry.js';
 import {
   getAllRegisteredGroups,
-  getAllSessions,
   getMessagesSince,
   getNewMessages,
   getRouterState,
   initDatabase,
   setRegisteredGroup,
   setRouterState,
-  setSession,
   storeChatMetadata,
   storeMessage,
 } from './db.js';
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
-import { findChannel, formatMessages, formatOutbound } from './router.js';
+import { runInProcessAgent } from './agent-runner.js';
+import { findChannel, formatMessages } from './router.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
 
@@ -35,7 +34,6 @@ import { logger } from './logger.js';
 export { escapeXml, formatMessages } from './router.js';
 
 let lastTimestamp = '';
-let sessions: Record<string, string> = {};
 let registeredGroups: Record<string, RegisteredGroup> = {};
 let lastAgentTimestamp: Record<string, string> = {};
 let messageLoopRunning = false;
@@ -52,7 +50,6 @@ function loadState(): void {
     logger.warn('Corrupted last_agent_timestamp in DB, resetting');
     lastAgentTimestamp = {};
   }
-  sessions = getAllSessions();
   registeredGroups = getAllRegisteredGroups();
   logger.info(
     { groupCount: Object.keys(registeredGroups).length },
@@ -189,15 +186,18 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
 
 async function runAgent(
   group: RegisteredGroup,
-  _prompt: string,
-  _chatJid: string,
-  _onOutput?: (output: {
+  prompt: string,
+  chatJid: string,
+  onOutput?: (output: {
     status: 'success' | 'error';
     result: string | null;
   }) => Promise<void>,
 ): Promise<'success' | 'error'> {
-  logger.warn({ group: group.name }, 'Agent runner not yet implemented');
-  return 'error';
+  const result = await runInProcessAgent(
+    { prompt, groupFolder: group.folder, chatJid },
+    onOutput,
+  );
+  return result.status;
 }
 
 async function startMessageLoop(): Promise<void> {
