@@ -33,6 +33,11 @@ COPY --from=builder /app/package.json .
 # Copy group folders (CLAUDE.md runbooks)
 COPY groups/ groups/
 
+# Run as non-root — Node.js and kubectl don't need root.
+# kubectl uses the SA token from the filesystem, not a privileged socket.
+RUN adduser --system --no-create-home nanoclaw
+USER nanoclaw
+
 # No KUBECONFIG — in-cluster, kubectl uses the ServiceAccount token
 # at /var/run/secrets/kubernetes.io/serviceaccount/ automatically.
 ENV NODE_ENV=production

@@ -202,10 +202,19 @@ function formatAlerts(alertname: string, alerts: Alert[]): string {
   return lines.join('\n').trim();
 }
 
+const MAX_BODY_BYTES = 1024 * 1024; // 1 MB — normal Alertmanager payloads are a few KB
+
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let body = '';
+    let bytes = 0;
     req.on('data', (chunk: Buffer) => {
+      bytes += chunk.length;
+      if (bytes > MAX_BODY_BYTES) {
+        req.destroy();
+        reject(new Error('Request body too large'));
+        return;
+      }
       body += chunk.toString();
     });
     req.on('end', () => resolve(body));
