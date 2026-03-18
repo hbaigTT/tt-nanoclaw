@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 import {
+  ALERT_GROUPS,
   ASSISTANT_NAME,
   POLL_INTERVAL,
   TIMEZONE,
@@ -285,6 +286,20 @@ async function main(): Promise<void> {
   initDatabase();
   logger.info('Database initialized');
   loadState();
+
+  // Auto-register alert groups (idempotent — skips already-registered JIDs)
+  for (const [alertname, { folder, name }] of Object.entries(ALERT_GROUPS)) {
+    const jid = `alertmanager:${alertname}`;
+    if (!registeredGroups[jid]) {
+      registerGroup(jid, {
+        name,
+        folder,
+        trigger: '',
+        added_at: new Date().toISOString(),
+        requiresTrigger: false,
+      });
+    }
+  }
 
   // Graceful shutdown handlers
   const shutdown = async (signal: string) => {

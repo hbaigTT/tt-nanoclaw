@@ -28,6 +28,14 @@ export const AGENT_TIMEOUT = parseInt(
   10,
 ); // 10 min default
 
+// Alert-to-group mapping: alertname → group folder + display name
+export const ALERT_GROUPS: Record<string, { folder: string; name: string }> = {
+  etcdDatabaseHighFragmentationRatio: {
+    folder: 'alerts',
+    name: 'etcd-fragmentation',
+  },
+};
+
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
