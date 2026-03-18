@@ -17,7 +17,7 @@ jobs:
     permissions:
       contents: read
       packages: write
-      pull-requests: read
+      pull-requests: write
 
     steps:
       - uses: actions/checkout@v4
@@ -37,8 +37,8 @@ jobs:
           tags: |
             # PR builds: pr-<number>
             type=ref,event=pr,prefix=pr-
-            # Main branch: latest + short sha
-            type=raw,value=latest,enable={{is_default_branch}}
+            # Main branch: alpha + short sha (dev cluster default)
+            type=raw,value=alpha,enable={{is_default_branch}}
             type=sha,prefix=,enable={{is_default_branch}}
             # Release tags: v1.0.0
             type=semver,pattern={{version}}
