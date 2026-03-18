@@ -20,7 +20,10 @@ spec:
         - name: ghcr-creds
       containers:
         - name: tt-nanoclaw
-          # Update this to match your ghcr.io org/repo (workflow pushes to ghcr.io/<github.repository>)
+          # Image tags:
+          #   latest       — current main branch (dev cluster default)
+          #   pr-<number>  — PR preview, test with: kubectl set image deploy/tt-nanoclaw tt-nanoclaw=ghcr.io/hbaigtt/tt-nanoclaw:pr-123
+          #   v1.0.0       — semver release (for prod)
           image: ghcr.io/hbaigtt/tt-nanoclaw:latest
           ports:
             - containerPort: 3000
