@@ -98,7 +98,10 @@ export async function runInProcessAgent(
       }
     } catch (err) {
       const error = err instanceof Error ? err.message : String(err);
-      logger.error({ group: input.groupFolder, err }, 'Agent SDK threw an error');
+      logger.error(
+        { group: input.groupFolder, err },
+        'Agent SDK threw an error',
+      );
       const output: AgentOutput = { status: 'error', result: null, error };
       await onOutput?.(output);
       return output;

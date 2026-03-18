@@ -43,7 +43,8 @@ export class AlertmanagerChannel implements Channel {
 
       this.server.listen(this.port, () => {
         const addr = this.server!.address();
-        const boundPort = typeof addr === 'object' && addr ? addr.port : this.port;
+        const boundPort =
+          typeof addr === 'object' && addr ? addr.port : this.port;
         logger.info({ port: boundPort }, 'Alertmanager webhook listening');
         resolve();
       });

@@ -127,11 +127,7 @@ describe('integration: webhook → DB roundtrip', () => {
 
   it('stores the alert as a NewMessage retrievable by getNewMessages', async () => {
     const port = getPort(channel);
-    const res = await postJson(
-      port,
-      '/webhook/alertmanager',
-      fixturePayload,
-    );
+    const res = await postJson(port, '/webhook/alertmanager', fixturePayload);
     expect(res.status).toBe(200);
 
     // Verify the message was stored
@@ -172,7 +168,11 @@ describe('integration: webhook → DB roundtrip', () => {
 describe('integration: webhook → queue → agent → sendMessage', () => {
   let channel: AlertmanagerChannel;
   let queue: GroupQueue;
-  let agentCalls: Array<{ prompt: string; groupFolder: string; chatJid: string }>;
+  let agentCalls: Array<{
+    prompt: string;
+    groupFolder: string;
+    chatJid: string;
+  }>;
   let slackMessages: string[];
   const registeredGroups: Record<string, RegisteredGroup> = {};
 
@@ -211,7 +211,8 @@ describe('integration: webhook → queue → agent → sendMessage', () => {
       agentCalls.push({ prompt, groupFolder: group.folder, chatJid });
 
       // Simulate agent returning a success result
-      const agentResult = 'RESOLVED: etcdDatabaseHighFragmentationRatio\n\nDefragmentation completed successfully.';
+      const agentResult =
+        'RESOLVED: etcdDatabaseHighFragmentationRatio\n\nDefragmentation completed successfully.';
       await channel.sendMessage(chatJid, agentResult);
 
       return true;
@@ -245,11 +246,7 @@ describe('integration: webhook → queue → agent → sendMessage', () => {
     const port = getPort(channel);
 
     // POST the alert webhook
-    const res = await postJson(
-      port,
-      '/webhook/alertmanager',
-      fixturePayload,
-    );
+    const res = await postJson(port, '/webhook/alertmanager', fixturePayload);
     expect(res.status).toBe(200);
 
     // Wait for async queue processing to complete
@@ -296,7 +293,11 @@ describe('integration: webhook → queue → agent → sendMessage', () => {
       alerts: [
         {
           status: 'firing' as const,
-          labels: { alertname: 'KubeProxyDown', severity: 'critical', namespace: 'kube-system' },
+          labels: {
+            alertname: 'KubeProxyDown',
+            severity: 'critical',
+            namespace: 'kube-system',
+          },
           annotations: { summary: 'KubeProxy is down' },
           startsAt: '2026-03-16T10:00:00.000Z',
           endsAt: '0001-01-01T00:00:00Z',

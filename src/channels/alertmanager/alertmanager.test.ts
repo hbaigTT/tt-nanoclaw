@@ -26,7 +26,9 @@ function makeChannel(opts = makeMockOpts()) {
   );
 }
 
-function firingPayload(overrides: Partial<AlertmanagerPayload> = {}): AlertmanagerPayload {
+function firingPayload(
+  overrides: Partial<AlertmanagerPayload> = {},
+): AlertmanagerPayload {
   return {
     version: '4',
     groupKey: 'test-group-key',
@@ -188,7 +190,11 @@ describe('AlertmanagerChannel', () => {
 
   it('returns 200 and calls onMessage for valid firing payload', async () => {
     const port = getPort(channel);
-    const res = await postWebhook(port, '/webhook/alertmanager', firingPayload());
+    const res = await postWebhook(
+      port,
+      '/webhook/alertmanager',
+      firingPayload(),
+    );
     expect(res.status).toBe(200);
     expect(opts.onMessage).toHaveBeenCalledOnce();
 

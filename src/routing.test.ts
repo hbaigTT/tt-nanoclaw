@@ -21,4 +21,3 @@ describe('JID ownership patterns', () => {
     expect(jid.endsWith('@s.whatsapp.net')).toBe(true);
   });
 });
-

@@ -5,8 +5,8 @@ const MAX_RETRIES = 5;
 const BASE_RETRY_MS = 5000;
 
 interface GroupState {
-  active: boolean;    // agent currently running for this group
-  pending: boolean;   // message arrived while agent was active
+  active: boolean; // agent currently running for this group
+  pending: boolean; // message arrived while agent was active
   retryCount: number;
 }
 
@@ -119,7 +119,10 @@ export class GroupQueue {
 
     if (state.pending) {
       this.runForGroup(groupJid).catch((err) =>
-        logger.error({ groupJid, err }, 'Unhandled error in runForGroup (drain)'),
+        logger.error(
+          { groupJid, err },
+          'Unhandled error in runForGroup (drain)',
+        ),
       );
       return;
     }
