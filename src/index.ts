@@ -283,6 +283,13 @@ function recoverPendingMessages(): void {
 }
 
 async function main(): Promise<void> {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    logger.fatal(
+      'ANTHROPIC_API_KEY not set — agent cannot function without it',
+    );
+    process.exit(1);
+  }
+
   initDatabase();
   logger.info('Database initialized');
   loadState();

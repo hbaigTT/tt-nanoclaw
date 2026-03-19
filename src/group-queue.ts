@@ -150,8 +150,30 @@ export class GroupQueue {
     }
   }
 
-  async shutdown(_gracePeriodMs: number): Promise<void> {
+  async shutdown(gracePeriodMs: number): Promise<void> {
     this.shuttingDown = true;
     logger.info({ activeCount: this.activeCount }, 'GroupQueue shutting down');
+
+    if (this.activeCount === 0) return;
+
+    // Wait for in-flight agents to finish, up to the grace period
+    return new Promise<void>((resolve) => {
+      const deadline = setTimeout(() => {
+        logger.warn(
+          { activeCount: this.activeCount },
+          'Shutdown grace period expired with active agents',
+        );
+        resolve();
+      }, gracePeriodMs);
+
+      const check = setInterval(() => {
+        if (this.activeCount === 0) {
+          clearInterval(check);
+          clearTimeout(deadline);
+          logger.info('All agents finished, shutdown complete');
+          resolve();
+        }
+      }, 200);
+    });
   }
 }

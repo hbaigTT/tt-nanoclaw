@@ -198,16 +198,20 @@ export async function runInProcessAgent(
     return lastOutput;
   };
 
-  const timeout = new Promise<AgentOutput>((_, reject) =>
-    setTimeout(
+  let timeoutHandle: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<AgentOutput>((_, reject) => {
+    timeoutHandle = setTimeout(
       () => reject(new Error(`Agent timed out after ${AGENT_TIMEOUT}ms`)),
       AGENT_TIMEOUT,
-    ),
-  );
+    );
+  });
 
   try {
-    return await Promise.race([agentWork(), timeout]);
+    const result = await Promise.race([agentWork(), timeout]);
+    clearTimeout(timeoutHandle!);
+    return result;
   } catch (err) {
+    clearTimeout(timeoutHandle!);
     const error = err instanceof Error ? err.message : String(err);
     logger.error({ group: input.groupFolder, error }, 'Agent timed out');
     const output: AgentOutput = { status: 'error', result: null, error };

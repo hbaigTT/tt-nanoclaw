@@ -86,6 +86,11 @@ export class AlertmanagerChannel implements Channel {
   }
 
   processPayload(payload: AlertmanagerPayload): void {
+    if (!payload || !Array.isArray(payload.alerts)) {
+      logger.warn('Malformed Alertmanager payload — missing or invalid alerts array');
+      return;
+    }
+
     if (payload.status === 'resolved') {
       logger.info(
         { groupKey: payload.groupKey },
@@ -103,6 +108,7 @@ export class AlertmanagerChannel implements Channel {
 
     // Filter to firing alerts not yet seen within TTL
     const newAlerts = payload.alerts.filter((alert) => {
+      if (!alert?.labels?.alertname || !alert?.fingerprint) return false;
       if (alert.status !== 'firing') return false;
       const expiry = this.dedupMap.get(alert.fingerprint);
       if (expiry && expiry > now) {
@@ -159,8 +165,12 @@ export class AlertmanagerChannel implements Channel {
   async sendMessage(_jid: string, text: string): Promise<void> {
     logger.info({ output: text }, 'Agent output');
     if (this.slackWebhookUrl) {
-      await this.sendFn(this.slackWebhookUrl, text);
-      logger.info('Posted to Slack');
+      try {
+        await this.sendFn(this.slackWebhookUrl, text);
+        logger.info('Posted to Slack');
+      } catch (err) {
+        logger.error({ err }, 'Failed to post to Slack — output was logged above');
+      }
     }
   }
 
@@ -207,21 +217,47 @@ function formatAlerts(alertname: string, alerts: Alert[]): string {
 
 const MAX_BODY_BYTES = 1024 * 1024; // 1 MB — normal Alertmanager payloads are a few KB
 
+const BODY_TIMEOUT_MS = 30000; // 30 seconds
+
 function readBody(req: http.IncomingMessage): Promise<string> {
   return new Promise((resolve, reject) => {
     let body = '';
     let bytes = 0;
+    let done = false;
+
+    const timer = setTimeout(() => {
+      if (!done) {
+        done = true;
+        req.destroy();
+        reject(new Error('Request body read timed out'));
+      }
+    }, BODY_TIMEOUT_MS);
+
     req.on('data', (chunk: Buffer) => {
       bytes += chunk.length;
       if (bytes > MAX_BODY_BYTES) {
+        done = true;
+        clearTimeout(timer);
         req.destroy();
         reject(new Error('Request body too large'));
         return;
       }
       body += chunk.toString();
     });
-    req.on('end', () => resolve(body));
-    req.on('error', reject);
+    req.on('end', () => {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        resolve(body);
+      }
+    });
+    req.on('error', (err) => {
+      if (!done) {
+        done = true;
+        clearTimeout(timer);
+        reject(err);
+      }
+    });
   });
 }
 
