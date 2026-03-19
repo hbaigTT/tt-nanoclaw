@@ -87,7 +87,9 @@ export class AlertmanagerChannel implements Channel {
 
   processPayload(payload: AlertmanagerPayload): void {
     if (!payload || !Array.isArray(payload.alerts)) {
-      logger.warn('Malformed Alertmanager payload — missing or invalid alerts array');
+      logger.warn(
+        'Malformed Alertmanager payload — missing or invalid alerts array',
+      );
       return;
     }
 
@@ -169,7 +171,10 @@ export class AlertmanagerChannel implements Channel {
         await this.sendFn(this.slackWebhookUrl, text);
         logger.info('Posted to Slack');
       } catch (err) {
-        logger.error({ err }, 'Failed to post to Slack — output was logged above');
+        logger.error(
+          { err },
+          'Failed to post to Slack — output was logged above',
+        );
       }
     }
   }
