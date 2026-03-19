@@ -1,6 +1,12 @@
-# Role and RoleBinding must be in kube-system (where etcd pods live).
-# A Role in monitoring cannot authorize access to kube-system resources.
-# The ServiceAccount lives in monitoring (where the tt-nanoclaw pod runs).
+# Roles and RoleBindings in each namespace the agent can access.
+# A Role in monitoring cannot authorize access to other namespaces —
+# each target namespace needs its own Role+RoleBinding, binding to
+# the tt-nanoclaw ServiceAccount in monitoring.
+#
+# To add a new namespace: copy a Role+RoleBinding block below, change
+# the namespace, and update ALLOWED_NAMESPACES in src/mcp/kubectl-server.ts.
+
+# --- kube-system ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
@@ -16,6 +22,81 @@ kind: RoleBinding
 metadata:
   name: tt-nanoclaw
   namespace: kube-system
+subjects:
+  - kind: ServiceAccount
+    name: tt-nanoclaw
+    namespace: monitoring
+roleRef:
+  kind: Role
+  name: tt-nanoclaw
+  apiGroup: rbac.authorization.k8s.io
+---
+# --- arc-systems ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tt-nanoclaw
+  namespace: arc-systems
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tt-nanoclaw
+  namespace: arc-systems
+subjects:
+  - kind: ServiceAccount
+    name: tt-nanoclaw
+    namespace: monitoring
+roleRef:
+  kind: Role
+  name: tt-nanoclaw
+  apiGroup: rbac.authorization.k8s.io
+---
+# --- buildkit ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tt-nanoclaw
+  namespace: buildkit
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tt-nanoclaw
+  namespace: buildkit
+subjects:
+  - kind: ServiceAccount
+    name: tt-nanoclaw
+    namespace: monitoring
+roleRef:
+  kind: Role
+  name: tt-nanoclaw
+  apiGroup: rbac.authorization.k8s.io
+---
+# --- harbor ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tt-nanoclaw
+  namespace: harbor
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tt-nanoclaw
+  namespace: harbor
 subjects:
   - kind: ServiceAccount
     name: tt-nanoclaw

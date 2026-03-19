@@ -39,6 +39,7 @@ spec:
                 secretKeyRef:
                   name: tt-nanoclaw
                   key: SLACK_WEBHOOK_URL
+                  optional: true
           # No KUBECONFIG — in-cluster ServiceAccount auth is automatic
           livenessProbe:
             httpGet:
