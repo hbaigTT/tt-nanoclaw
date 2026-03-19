@@ -117,3 +117,31 @@ roleRef:
   kind: Role
   name: tt-nanoclaw
   apiGroup: rbac.authorization.k8s.io
+---
+# --- demo ---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: tt-nanoclaw
+  namespace: demo
+rules:
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: tt-nanoclaw
+  namespace: demo
+subjects:
+  - kind: ServiceAccount
+    name: tt-nanoclaw
+    namespace: monitoring
+roleRef:
+  kind: Role
+  name: tt-nanoclaw
+  apiGroup: rbac.authorization.k8s.io

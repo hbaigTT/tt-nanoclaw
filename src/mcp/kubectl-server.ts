@@ -19,7 +19,13 @@ const execFileAsync = promisify(execFile);
 // --- Validation allowlists ---
 // Expand these when adding new alert types. Each expansion is a reviewable PR.
 
-const ALLOWED_NAMESPACES = ['kube-system', 'arc-systems', 'buildkit', 'harbor'];
+const ALLOWED_NAMESPACES = [
+  'kube-system',
+  'arc-systems',
+  'buildkit',
+  'harbor',
+  'demo',
+];
 
 const ALLOWED_DELETE_RESOURCES = ['pods'];
 
