@@ -37,7 +37,7 @@ COPY groups/ groups/
 # kubectl uses the SA token from the filesystem, not a privileged socket.
 RUN adduser --system --no-create-home nanoclaw && \
     mkdir -p /app/store /app/data && \
-    chown -R nanoclaw /app/store /app/data
+    chown -R nanoclaw /app/store /app/data /app/groups
 USER nanoclaw
 
 # No KUBECONFIG — in-cluster, kubectl uses the ServiceAccount token
