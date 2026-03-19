@@ -1,4 +1,4 @@
-import { MAX_CONCURRENT_CONTAINERS } from './config.js';
+import { MAX_CONCURRENT_AGENTS } from './config.js';
 import { logger } from './logger.js';
 
 const MAX_RETRIES = 5;
@@ -42,7 +42,7 @@ export class GroupQueue {
       return;
     }
 
-    if (this.activeCount >= MAX_CONCURRENT_CONTAINERS) {
+    if (this.activeCount >= MAX_CONCURRENT_AGENTS) {
       state.pending = true;
       if (!this.waitingGroups.includes(groupJid)) {
         this.waitingGroups.push(groupJid);
@@ -134,7 +134,7 @@ export class GroupQueue {
   private drainWaiting(): void {
     while (
       this.waitingGroups.length > 0 &&
-      this.activeCount < MAX_CONCURRENT_CONTAINERS
+      this.activeCount < MAX_CONCURRENT_AGENTS
     ) {
       const nextJid = this.waitingGroups.shift()!;
       const state = this.getGroup(nextJid);

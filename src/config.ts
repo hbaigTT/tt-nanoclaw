@@ -16,9 +16,9 @@ export const STORE_DIR = path.resolve(PROJECT_ROOT, 'store');
 export const GROUPS_DIR = path.resolve(PROJECT_ROOT, 'groups');
 export const DATA_DIR = path.resolve(PROJECT_ROOT, 'data');
 
-export const MAX_CONCURRENT_CONTAINERS = Math.max(
+export const MAX_CONCURRENT_AGENTS = Math.max(
   1,
-  parseInt(process.env.MAX_CONCURRENT_CONTAINERS || '5', 10) || 5,
+  parseInt(process.env.MAX_CONCURRENT_AGENTS || '5', 10) || 5,
 );
 
 export const WEBHOOK_PORT = parseInt(process.env.WEBHOOK_PORT || '3000', 10);

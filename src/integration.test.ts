@@ -30,7 +30,7 @@ vi.mock('./config.js', () => ({
   TRIGGER_PATTERN: /^@Andy\b/i,
   WEBHOOK_PORT: 0,
   AGENT_TIMEOUT: 30000,
-  MAX_CONCURRENT_CONTAINERS: 5,
+  MAX_CONCURRENT_AGENTS: 5,
   STORE_DIR: '/tmp/tt-nanoclaw-test/store',
   GROUPS_DIR: '/tmp/tt-nanoclaw-test/groups',
   DATA_DIR: '/tmp/tt-nanoclaw-test/data',

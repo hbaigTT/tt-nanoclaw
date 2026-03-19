@@ -28,11 +28,11 @@ No container nesting. The agent runs directly in the tt-nanoclaw pod. The agent 
 
 ## Current Scope (POC)
 
-The first alert being automated is **`etcdDatabaseHighFragmentationRatio`**:
-- Fires when etcd fragmentation ratio exceeds threshold
-- Resolution: `etcdctl defrag` on each cluster member
-- Recurs every 2-3 months, always the same fix
-- Agent verifies fragmentation drops after defrag, posts before/after to Slack
+The first alert being automated is **`KubePodCrashLooping`**:
+- Fires when a pod is repeatedly crashing and restarting
+- Agent investigates (events, logs, pod state), decides transient vs structural
+- Transient: deletes pod to trigger fresh restart, verifies replacement is Running
+- Structural: escalates with diagnosis and recommended next steps
 
 ## Project Structure
 
@@ -53,7 +53,7 @@ src/
 ├── config.ts                        # Configuration (ports, timeouts, alert groups)
 └── types.ts                         # Core interfaces (Channel, NewMessage, RegisteredGroup)
 
-groups/alerts/CLAUDE.md              # SRE agent persona + etcd defrag runbook
+groups/alerts/CLAUDE.md              # SRE agent persona + KubePodCrashLooping runbook
 k8s/                                 # Kubernetes manifests
 test/fixtures/                       # Alertmanager payload fixtures
 ```
@@ -63,7 +63,7 @@ test/fixtures/                       # Alertmanager payload fixtures
 ```bash
 npm install
 npm run build
-npm test            # 106 tests (unit + integration)
+npm test            # 104 tests (unit + integration)
 npm run dev         # Run with hot reload
 ```
 
@@ -71,15 +71,16 @@ npm run dev         # Run with hot reload
 
 ```bash
 ANTHROPIC_API_KEY=sk-... \
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/... \
 KUBECONFIG=~/.kube/ci-dev-cluster.yaml \
 npm run dev
 
 # In another terminal:
 curl -X POST http://localhost:3000/webhook/alertmanager \
   -H 'Content-Type: application/json' \
-  -d @test/fixtures/etcd-fragmentation-alert.json
+  -d @test/fixtures/pod-crashloop-alert.json
 ```
+
+`SLACK_WEBHOOK_URL` is optional — if not set, agent output is logged to stdout.
 
 ### Image tags
 
@@ -100,8 +101,8 @@ Deployed as a Kubernetes Deployment in the `monitoring` namespace of the dev clu
 - **Deployment** — tt-nanoclaw pod running Node.js + Claude Agent SDK
 - **Service** — ClusterIP on port 3000
 - **ServiceAccount** — in `monitoring` namespace
-- **RBAC** — Role + RoleBinding in `kube-system` (get/list/delete pods)
-- **Secret** — `ANTHROPIC_API_KEY` and `SLACK_WEBHOOK_URL`
+- **RBAC** — Role + RoleBinding in kube-system, arc-systems, buildkit, harbor (get/list/delete pods, get pods/log)
+- **Secret** — `ANTHROPIC_API_KEY` (required), `SLACK_WEBHOOK_URL` (optional)
 
 ### Apply manifests
 
@@ -126,21 +127,9 @@ receivers:
 routes:
   - receiver: 'nanoclaw'
     matchers:
-      - alertname = "etcdDatabaseHighFragmentationRatio"
+      - alertname = "KubePodCrashLooping"
     continue: true
 ```
-
-## Upstream Sync
-
-To pull upstream nanoclaw changes:
-
-```bash
-git remote add upstream https://github.com/qwibitai/nanoclaw.git
-git fetch upstream main
-git merge upstream/main
-```
-
-Fork-specific changes are in `src/channels/alertmanager/`, `src/mcp/`, `src/agent-runner.ts`, `groups/alerts/`, and `k8s/` to minimize merge conflicts.
 
 ## License
 

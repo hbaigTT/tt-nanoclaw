@@ -26,13 +26,23 @@ export interface AgentOutput {
  * Extract a concise summary of an SDK message for logging.
  * INFO level: type + tool name (if tool call). DEBUG level: full content.
  */
-function logSdkMessage(group: string, message: { type: string; [key: string]: unknown }): void {
+function logSdkMessage(
+  group: string,
+  message: { type: string; [key: string]: unknown },
+): void {
   const subtype = 'subtype' in message ? String(message.subtype) : '';
 
   if (message.type === 'assistant') {
     const msg = message as {
       type: string;
-      message?: { content?: Array<{ type: string; text?: string; name?: string; input?: unknown }> };
+      message?: {
+        content?: Array<{
+          type: string;
+          text?: string;
+          name?: string;
+          input?: unknown;
+        }>;
+      };
     };
     const content = msg.message?.content;
     if (content) {
@@ -52,7 +62,12 @@ function logSdkMessage(group: string, message: { type: string; [key: string]: un
   } else if (message.type === 'user') {
     const msg = message as {
       type: string;
-      message?: { content?: Array<{ type: string; content?: string | Array<{ type: string; text?: string }> }> };
+      message?: {
+        content?: Array<{
+          type: string;
+          content?: string | Array<{ type: string; text?: string }>;
+        }>;
+      };
     };
     const content = msg.message?.content;
     if (content) {
@@ -67,10 +82,7 @@ function logSdkMessage(group: string, message: { type: string; [key: string]: un
                     .map((c) => c.text)
                     .join('\n')
                 : '';
-          logger.debug(
-            { group, result: text.slice(0, 500) },
-            'Tool result',
-          );
+          logger.debug({ group, result: text.slice(0, 500) }, 'Tool result');
         }
       }
     }
@@ -130,7 +142,10 @@ export async function runInProcessAgent(
           env: process.env as Record<string, string>,
         },
       })) {
-        logSdkMessage(input.groupFolder, message as { type: string; [key: string]: unknown });
+        logSdkMessage(
+          input.groupFolder,
+          message as { type: string; [key: string]: unknown },
+        );
 
         if (message.type === 'system' && message.subtype === 'init') {
           logger.info(

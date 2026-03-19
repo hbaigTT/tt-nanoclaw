@@ -4,7 +4,7 @@ import { GroupQueue } from './group-queue.js';
 
 // Mock config to control concurrency limit
 vi.mock('./config.js', () => ({
-  MAX_CONCURRENT_CONTAINERS: 2,
+  MAX_CONCURRENT_AGENTS: 2,
 }));
 
 describe('GroupQueue', () => {
