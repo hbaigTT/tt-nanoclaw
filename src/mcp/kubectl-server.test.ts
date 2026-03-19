@@ -10,7 +10,13 @@ import { describe, it, expect } from 'vitest';
 // Replicate the validation logic and allowlists from kubectl-server.ts.
 // If the allowlists change there, update these tests to match.
 
-const ALLOWED_NAMESPACES = ['kube-system', 'arc-systems', 'buildkit', 'harbor', 'demo'];
+const ALLOWED_NAMESPACES = [
+  'kube-system',
+  'arc-systems',
+  'buildkit',
+  'harbor',
+  'demo',
+];
 const ALLOWED_DELETE_RESOURCES = ['pods'];
 
 function validateNamespace(namespace: string): void {
