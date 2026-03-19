@@ -13,7 +13,7 @@ RUN npm run build
 # --- Runtime stage ---
 FROM node:20-slim
 
-# Install kubectl for agent to exec into etcd pods
+# Install kubectl for MCP tools (get, describe, logs, delete)
 RUN apt-get update && \
     apt-get install -y --no-install-recommends curl ca-certificates && \
     curl -fsSL "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
