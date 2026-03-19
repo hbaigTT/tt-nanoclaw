@@ -47,13 +47,11 @@ export async function runInProcessAgent(
     };
 
     try {
+      logger.info({ group: input.groupFolder }, 'Calling Agent SDK query()');
       for await (const message of query({
         prompt: input.prompt,
         options: {
           cwd: groupDir,
-          // No built-in tools — all cluster access via the kubectl MCP server.
-          // The agent cannot run arbitrary commands, only the validated kubectl
-          // verb tools (get, describe, logs, exec) we define.
           tools: [],
           permissionMode: 'bypassPermissions',
           allowDangerouslySkipPermissions: true,
@@ -64,7 +62,6 @@ export async function runInProcessAgent(
               env: process.env as Record<string, string>,
             },
           },
-          // Append CLAUDE.md content as extra system context
           systemPrompt: claudeMd
             ? {
                 type: 'preset' as const,
@@ -72,8 +69,6 @@ export async function runInProcessAgent(
                 append: claudeMd,
               }
             : undefined,
-          // Each alert runs fresh — no session resumption
-          // (stale sessions from prior incidents inject confusing context)
           env: process.env as Record<string, string>,
         },
       })) {
