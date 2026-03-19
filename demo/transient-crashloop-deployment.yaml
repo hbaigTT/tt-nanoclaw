@@ -1,0 +1,57 @@
+# This deployment creates a pod that crashes on the first few restarts
+# because it checks for a file that doesn't exist yet. A ConfigMap
+# is created after a delay (simulating a dependency becoming ready).
+# The agent should see "No such file or directory" in logs, notice
+# the ConfigMap now exists, and delete the pod. The replacement mounts
+# the ConfigMap and starts successfully.
+#
+# Usage:
+#   kubectl apply -f demo/transient-crashloop-deployment.yaml
+#   # Wait ~30s for CrashLoopBackOff, then trigger the agent
+#   # Agent deletes pod → replacement starts with ConfigMap mounted → Running
+
+# Step 1: The ConfigMap (the "dependency" that's now ready)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-app-config
+  namespace: demo
+data:
+  app.conf: |
+    database_host=db.demo.svc
+    database_port=5432
+    log_level=info
+---
+# Step 2: The Deployment — first version has no volume mount, so it crashes.
+# After the agent deletes the pod, we patch it to mount the ConfigMap.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-transient
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-transient
+  template:
+    metadata:
+      labels:
+        app: demo-transient
+    spec:
+      containers:
+        - name: demo-transient
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              echo "Starting app..."
+              if [ -f /config/app.conf ]; then
+                echo "Config loaded successfully"
+                echo "App running"
+                sleep 3600
+              else
+                echo "ERROR: /config/app.conf not found - config not mounted"
+                exit 1
+              fi
