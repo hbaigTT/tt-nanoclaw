@@ -41,7 +41,8 @@ echo ""
 echo "=== Step 4: Send alert to tt-nanoclaw ==="
 # Get the current crashing pod name (it might have changed after patch)
 POD_NAME=$(kubectl -n demo get pods -l app=demo-transient --field-selector=status.phase!=Succeeded -o jsonpath='{.items[0].metadata.name}')
-FIXTURE=$(cat test/fixtures/demo-crashloop-alert.json | sed "s/REPLACE_WITH_ACTUAL_POD_NAME/$POD_NAME/g" | sed "s/demo-app/demo-transient/g")
+FINGERPRINT="demo-$(date +%s)-$$"
+FIXTURE=$(cat test/fixtures/demo-crashloop-alert.json | sed "s/REPLACE_WITH_ACTUAL_POD_NAME/$POD_NAME/g" | sed "s/demo-app/demo-transient/g" | sed "s/demo-crashloop-001/$FINGERPRINT/g")
 echo "$FIXTURE" | curl -s -X POST http://localhost:3000/webhook/alertmanager \
   -H 'Content-Type: application/json' \
   -d @-

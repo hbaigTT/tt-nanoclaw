@@ -28,7 +28,8 @@ echo ""
 
 echo "=== Step 4: Send alert to tt-nanoclaw ==="
 # Create fixture with actual pod name
-FIXTURE=$(cat test/fixtures/demo-crashloop-alert.json | sed "s/REPLACE_WITH_ACTUAL_POD_NAME/$POD_NAME/g")
+FINGERPRINT="demo-$(date +%s)-$$"
+FIXTURE=$(cat test/fixtures/demo-crashloop-alert.json | sed "s/REPLACE_WITH_ACTUAL_POD_NAME/$POD_NAME/g" | sed "s/demo-crashloop-001/$FINGERPRINT/g")
 echo "$FIXTURE" | curl -s -X POST http://localhost:3000/webhook/alertmanager \
   -H 'Content-Type: application/json' \
   -d @-
