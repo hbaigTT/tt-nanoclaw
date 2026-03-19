@@ -79,7 +79,7 @@ export async function runInProcessAgent(
       })) {
         const subtype =
           'subtype' in message ? (message as { subtype: string }).subtype : '';
-        logger.debug(
+        logger.info(
           { group: input.groupFolder, type: message.type, subtype },
           'Agent SDK message',
         );
