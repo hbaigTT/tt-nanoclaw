@@ -208,7 +208,7 @@ async function startMessageLoop(): Promise<void> {
   }
   messageLoopRunning = true;
 
-  logger.info(`NanoClaw running (trigger: @${ASSISTANT_NAME})`);
+  logger.info('tt-nanoclaw running');
 
   while (true) {
     try {
