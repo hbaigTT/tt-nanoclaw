@@ -15,13 +15,13 @@ export class AlertmanagerChannel implements Channel {
   private server: http.Server | null = null;
   private dedupMap = new Map<string, number>(); // fingerprint → expiry timestamp
   private opts: ChannelOpts;
-  private slackWebhookUrl: string;
+  private slackWebhookUrl: string | null;
   private port: number;
   private sendFn: (url: string, text: string) => Promise<void>;
 
   constructor(
     opts: ChannelOpts,
-    slackWebhookUrl: string,
+    slackWebhookUrl: string | null,
     port = WEBHOOK_PORT,
     sendFn: (url: string, text: string) => Promise<void> = postToSlack,
   ) {
@@ -157,8 +157,11 @@ export class AlertmanagerChannel implements Channel {
   }
 
   async sendMessage(_jid: string, text: string): Promise<void> {
-    logger.info(`Posting to Slack: ${text.slice(0, 120)}`);
-    await this.sendFn(this.slackWebhookUrl, text);
+    logger.info({ output: text }, 'Agent output');
+    if (this.slackWebhookUrl) {
+      await this.sendFn(this.slackWebhookUrl, text);
+      logger.info('Posted to Slack');
+    }
   }
 
   isConnected(): boolean {
@@ -253,9 +256,11 @@ async function postToSlack(webhookUrl: string, text: string): Promise<void> {
 }
 
 registerChannel('alertmanager', (opts: ChannelOpts): Channel | null => {
-  const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
+  const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL || null;
   if (!slackWebhookUrl) {
-    return null;
+    logger.warn(
+      'SLACK_WEBHOOK_URL not set — agent output will be logged but not posted to Slack',
+    );
   }
   return new AlertmanagerChannel(opts, slackWebhookUrl);
 });
