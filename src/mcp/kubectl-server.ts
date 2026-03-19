@@ -229,9 +229,7 @@ server.tool(
   'kubectl_delete',
   'Delete a Kubernetes resource. Restricted to allowed resource types only (pods).',
   {
-    resource: z
-      .string()
-      .describe('Resource type (only "pods" is allowed)'),
+    resource: z.string().describe('Resource type (only "pods" is allowed)'),
     name: z.string().describe('Resource name'),
     namespace: z
       .string()

