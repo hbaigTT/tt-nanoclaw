@@ -22,13 +22,71 @@ export interface AgentOutput {
   error?: string;
 }
 
+/**
+ * Extract a concise summary of an SDK message for logging.
+ * INFO level: type + tool name (if tool call). DEBUG level: full content.
+ */
+function logSdkMessage(group: string, message: { type: string; [key: string]: unknown }): void {
+  const subtype = 'subtype' in message ? String(message.subtype) : '';
+
+  if (message.type === 'assistant') {
+    const msg = message as {
+      type: string;
+      message?: { content?: Array<{ type: string; text?: string; name?: string; input?: unknown }> };
+    };
+    const content = msg.message?.content;
+    if (content) {
+      for (const block of content) {
+        if (block.type === 'text' && block.text) {
+          logger.debug({ group, text: block.text }, 'Agent thinking');
+        } else if (block.type === 'tool_use') {
+          logger.info(
+            { group, tool: block.name, input: block.input },
+            'Agent tool call',
+          );
+        }
+      }
+    } else {
+      logger.debug({ group, type: message.type, subtype }, 'Agent SDK message');
+    }
+  } else if (message.type === 'user') {
+    const msg = message as {
+      type: string;
+      message?: { content?: Array<{ type: string; content?: string | Array<{ type: string; text?: string }> }> };
+    };
+    const content = msg.message?.content;
+    if (content) {
+      for (const block of content) {
+        if (block.type === 'tool_result') {
+          const text =
+            typeof block.content === 'string'
+              ? block.content
+              : Array.isArray(block.content)
+                ? block.content
+                    .filter((c) => c.type === 'text')
+                    .map((c) => c.text)
+                    .join('\n')
+                : '';
+          logger.debug(
+            { group, result: text.slice(0, 500) },
+            'Tool result',
+          );
+        }
+      }
+    }
+  } else if (message.type === 'system') {
+    logger.debug({ group, type: message.type, subtype }, 'Agent SDK message');
+  } else {
+    logger.debug({ group, type: message.type, subtype }, 'Agent SDK message');
+  }
+}
+
 export async function runInProcessAgent(
   input: AgentInput,
   onOutput?: (output: AgentOutput) => Promise<void>,
 ): Promise<AgentOutput> {
   const groupDir = resolveGroupFolderPath(input.groupFolder);
 
-  // Load CLAUDE.md from the group folder as system context
   const claudeMdPath = path.join(groupDir, 'CLAUDE.md');
   const claudeMd = fs.existsSync(claudeMdPath)
     ? fs.readFileSync(claudeMdPath, 'utf-8')
@@ -72,12 +130,7 @@ export async function runInProcessAgent(
           env: process.env as Record<string, string>,
         },
       })) {
-        const subtype =
-          'subtype' in message ? (message as { subtype: string }).subtype : '';
-        logger.info(
-          { group: input.groupFolder, type: message.type, subtype },
-          'Agent SDK message',
-        );
+        logSdkMessage(input.groupFolder, message as { type: string; [key: string]: unknown });
 
         if (message.type === 'system' && message.subtype === 'init') {
           logger.info(
@@ -95,7 +148,6 @@ export async function runInProcessAgent(
             lastOutput = output;
             await onOutput?.(output);
           } else {
-            // error_during_execution, error_max_turns, etc.
             logger.warn(
               { group: input.groupFolder, subtype: message.subtype },
               'Agent returned error result',
