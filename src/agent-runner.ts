@@ -77,6 +77,13 @@ export async function runInProcessAgent(
           env: process.env as Record<string, string>,
         },
       })) {
+        const subtype =
+          'subtype' in message ? (message as { subtype: string }).subtype : '';
+        logger.debug(
+          { group: input.groupFolder, type: message.type, subtype },
+          'Agent SDK message',
+        );
+
         if (message.type === 'system' && message.subtype === 'init') {
           logger.info(
             { group: input.groupFolder, sessionId: message.session_id },
@@ -117,6 +124,13 @@ export async function runInProcessAgent(
       const output: AgentOutput = { status: 'error', result: null, error };
       await onOutput?.(output);
       return output;
+    }
+
+    if (lastOutput.status === 'error') {
+      logger.error(
+        { group: input.groupFolder, error: lastOutput.error },
+        'Agent finished with error status',
+      );
     }
 
     return lastOutput;
