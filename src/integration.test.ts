@@ -19,11 +19,10 @@ import {
 } from './db.js';
 import { AlertmanagerChannel } from './channels/alertmanager/index.js';
 import { GroupQueue } from './group-queue.js';
-import { formatMessages, findChannel } from './router.js';
-import { Channel, NewMessage, RegisteredGroup } from './types.js';
-import fixturePayload from '../test/fixtures/etcd-fragmentation-alert.json' with { type: 'json' };
+import { formatMessages } from './router.js';
+import { NewMessage, RegisteredGroup } from './types.js';
+import crashloopPayload from '../test/fixtures/pod-crashloop-alert.json' with { type: 'json' };
 
-// Mock config — tests need controlled values
 vi.mock('./config.js', () => ({
   ASSISTANT_NAME: 'Andy',
   POLL_INTERVAL: 100,
@@ -36,9 +35,9 @@ vi.mock('./config.js', () => ({
   GROUPS_DIR: '/tmp/tt-nanoclaw-test/groups',
   DATA_DIR: '/tmp/tt-nanoclaw-test/data',
   ALERT_GROUPS: {
-    etcdDatabaseHighFragmentationRatio: {
+    KubePodCrashLooping: {
       folder: 'alerts',
-      name: 'etcd-fragmentation',
+      name: 'pod-crashloop',
     },
   },
 }));
@@ -115,7 +114,7 @@ describe('integration: webhook → DB roundtrip', () => {
         registeredGroups: () => ({}),
       },
       'https://hooks.slack.com/test',
-      0, // OS-assigned port
+      0,
       mockSlackSend,
     );
     await channel.connect();
@@ -127,23 +126,18 @@ describe('integration: webhook → DB roundtrip', () => {
 
   it('stores the alert as a NewMessage retrievable by getNewMessages', async () => {
     const port = getPort(channel);
-    const res = await postJson(port, '/webhook/alertmanager', fixturePayload);
+    const res = await postJson(port, '/webhook/alertmanager', crashloopPayload);
     expect(res.status).toBe(200);
 
-    // Verify the message was stored
     expect(storedMessages).toHaveLength(1);
     const msg = storedMessages[0];
-    expect(msg.chat_jid).toBe(
-      'alertmanager:etcdDatabaseHighFragmentationRatio',
-    );
+    expect(msg.chat_jid).toBe('alertmanager:KubePodCrashLooping');
     expect(msg.sender).toBe('alertmanager');
     expect(msg.content).toContain('ALERT FIRING');
-    expect(msg.content).toContain('etcd-f06cs15');
-    expect(msg.content).toContain('etcd-f11-ci-infra-01');
-    expect(msg.content).toContain('etcd-f11-ci-infra-02');
+    expect(msg.content).toContain('buildkitd-d56c8c85f-4s7kw');
+    expect(msg.content).toContain('CrashLoopBackOff');
 
-    // Verify SQLite retrieval works for this JID
-    const jid = 'alertmanager:etcdDatabaseHighFragmentationRatio';
+    const jid = 'alertmanager:KubePodCrashLooping';
     const { messages } = getNewMessages([jid], '', 'Andy');
     expect(messages).toHaveLength(1);
     expect(messages[0].chat_jid).toBe(jid);
@@ -153,10 +147,9 @@ describe('integration: webhook → DB roundtrip', () => {
   it('deduplicates repeated webhook deliveries', async () => {
     const port = getPort(channel);
 
-    await postJson(port, '/webhook/alertmanager', fixturePayload);
-    await postJson(port, '/webhook/alertmanager', fixturePayload);
+    await postJson(port, '/webhook/alertmanager', crashloopPayload);
+    await postJson(port, '/webhook/alertmanager', crashloopPayload);
 
-    // Same fingerprints → only 1 message stored
     expect(storedMessages).toHaveLength(1);
   });
 });
@@ -185,10 +178,9 @@ describe('integration: webhook → queue → agent → sendMessage', () => {
       slackMessages.push(text);
     });
 
-    // Register the alert group
-    const jid = 'alertmanager:etcdDatabaseHighFragmentationRatio';
+    const jid = 'alertmanager:KubePodCrashLooping';
     registeredGroups[jid] = {
-      name: 'etcd-fragmentation',
+      name: 'pod-crashloop',
       folder: 'alerts',
       trigger: '',
       added_at: new Date().toISOString(),
@@ -196,7 +188,6 @@ describe('integration: webhook → queue → agent → sendMessage', () => {
     };
     setRegisteredGroup(jid, registeredGroups[jid]);
 
-    // Set up queue with a processing function that mimics processGroupMessages
     queue = new GroupQueue();
     queue.setProcessMessagesFn(async (chatJid: string): Promise<boolean> => {
       const group = registeredGroups[chatJid];
@@ -207,23 +198,19 @@ describe('integration: webhook → queue → agent → sendMessage', () => {
 
       const prompt = formatMessages(messages, 'UTC');
 
-      // Record the agent call (instead of calling real agent SDK)
       agentCalls.push({ prompt, groupFolder: group.folder, chatJid });
 
-      // Simulate agent returning a success result
       const agentResult =
-        'RESOLVED: etcdDatabaseHighFragmentationRatio\n\nDefragmentation completed successfully.';
+        'RESOLVED: KubePodCrashLooping\n\nPod buildkitd-d56c8c85f-4s7kw deleted. Replacement is Running.';
       await channel.sendMessage(chatJid, agentResult);
 
       return true;
     });
 
-    // Create channel wired to store messages and trigger queue
     channel = new AlertmanagerChannel(
       {
         onMessage: (_jid: string, msg: NewMessage) => {
           storeMessage(msg);
-          // Trigger queue processing (replaces the message loop's role)
           queue.enqueueMessageCheck(msg.chat_jid);
         },
         onChatMetadata: (jid, ts, name, ch, isGroup) =>
@@ -245,11 +232,9 @@ describe('integration: webhook → queue → agent → sendMessage', () => {
   it('processes an alert end-to-end: webhook → agent → slack', async () => {
     const port = getPort(channel);
 
-    // POST the alert webhook
-    const res = await postJson(port, '/webhook/alertmanager', fixturePayload);
+    const res = await postJson(port, '/webhook/alertmanager', crashloopPayload);
     expect(res.status).toBe(200);
 
-    // Wait for async queue processing to complete
     await vi.waitFor(
       () => {
         expect(agentCalls).toHaveLength(1);
@@ -257,28 +242,21 @@ describe('integration: webhook → queue → agent → sendMessage', () => {
       { timeout: 2000 },
     );
 
-    // Verify the agent was called with the right group and JID
     expect(agentCalls[0].groupFolder).toBe('alerts');
-    expect(agentCalls[0].chatJid).toBe(
-      'alertmanager:etcdDatabaseHighFragmentationRatio',
-    );
+    expect(agentCalls[0].chatJid).toBe('alertmanager:KubePodCrashLooping');
+    expect(agentCalls[0].prompt).toContain('buildkitd-d56c8c85f-4s7kw');
 
-    // Verify the prompt contains the alert details
-    expect(agentCalls[0].prompt).toContain('etcd-f06cs15');
-
-    // Verify the agent's output was sent to Slack
     expect(slackMessages).toHaveLength(1);
     expect(slackMessages[0]).toContain('RESOLVED');
-    expect(slackMessages[0]).toContain('etcdDatabaseHighFragmentationRatio');
+    expect(slackMessages[0]).toContain('KubePodCrashLooping');
   });
 
   it('handles concurrent alerts for different alertnames', async () => {
     const port = getPort(channel);
 
-    // Register a second alert group
-    const secondJid = 'alertmanager:KubeProxyDown';
+    const secondJid = 'alertmanager:KubeNodeNotReady';
     registeredGroups[secondJid] = {
-      name: 'kube-proxy-down',
+      name: 'node-not-ready',
       folder: 'alerts',
       trigger: '',
       added_at: new Date().toISOString(),
@@ -286,28 +264,27 @@ describe('integration: webhook → queue → agent → sendMessage', () => {
     };
     setRegisteredGroup(secondJid, registeredGroups[secondJid]);
 
-    // Send two different alerts
     const secondPayload = {
-      ...fixturePayload,
+      ...crashloopPayload,
       groupKey: 'different-group',
       alerts: [
         {
           status: 'firing' as const,
           labels: {
-            alertname: 'KubeProxyDown',
+            alertname: 'KubeNodeNotReady',
             severity: 'critical',
-            namespace: 'kube-system',
+            node: 'f06cs19',
           },
-          annotations: { summary: 'KubeProxy is down' },
+          annotations: { summary: 'Node is not ready' },
           startsAt: '2026-03-16T10:00:00.000Z',
           endsAt: '0001-01-01T00:00:00Z',
           generatorURL: 'http://prometheus/graph',
-          fingerprint: 'fp-kubeproxy-001',
+          fingerprint: 'fp-nodenotready-001',
         },
       ],
     };
 
-    await postJson(port, '/webhook/alertmanager', fixturePayload);
+    await postJson(port, '/webhook/alertmanager', crashloopPayload);
     await postJson(port, '/webhook/alertmanager', secondPayload);
 
     await vi.waitFor(
@@ -319,8 +296,8 @@ describe('integration: webhook → queue → agent → sendMessage', () => {
 
     const jids = agentCalls.map((c) => c.chatJid).sort();
     expect(jids).toEqual([
-      'alertmanager:KubeProxyDown',
-      'alertmanager:etcdDatabaseHighFragmentationRatio',
+      'alertmanager:KubeNodeNotReady',
+      'alertmanager:KubePodCrashLooping',
     ]);
   });
 });
@@ -335,7 +312,6 @@ describe('integration: alert group auto-registration', () => {
   });
 
   it('ALERT_GROUPS config produces correct registered groups', async () => {
-    // Simulate what main() does: iterate ALERT_GROUPS and register
     const { ALERT_GROUPS } = await import('./config.js');
 
     for (const [alertname, { folder, name }] of Object.entries(ALERT_GROUPS)) {
@@ -350,10 +326,10 @@ describe('integration: alert group auto-registration', () => {
     }
 
     const groups = getAllRegisteredGroups();
-    const jid = 'alertmanager:etcdDatabaseHighFragmentationRatio';
+    const jid = 'alertmanager:KubePodCrashLooping';
     expect(groups[jid]).toBeDefined();
     expect(groups[jid].folder).toBe('alerts');
-    expect(groups[jid].name).toBe('etcd-fragmentation');
+    expect(groups[jid].name).toBe('pod-crashloop');
     expect(groups[jid].requiresTrigger).toBe(false);
   });
 });

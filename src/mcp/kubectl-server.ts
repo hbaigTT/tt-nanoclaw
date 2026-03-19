@@ -19,11 +19,13 @@ const execFileAsync = promisify(execFile);
 // --- Validation allowlists ---
 // Expand these when adding new alert types. Each expansion is a reviewable PR.
 
-const ALLOWED_NAMESPACES = ['kube-system'];
+const ALLOWED_NAMESPACES = ['kube-system', 'arc-systems', 'buildkit', 'harbor'];
 
 const ALLOWED_EXEC_POD_PATTERNS = [/^etcd-/];
 
 const ALLOWED_EXEC_BINARIES = ['etcdctl'];
+
+const ALLOWED_DELETE_RESOURCES = ['pods'];
 
 // --- Helpers ---
 
@@ -56,6 +58,14 @@ function validateExecBinary(command: string[]): void {
   }
 }
 
+function validateDeleteResource(resource: string): void {
+  if (!ALLOWED_DELETE_RESOURCES.includes(resource)) {
+    throw new Error(
+      `Resource "${resource}" not allowed for deletion. Allowed: ${ALLOWED_DELETE_RESOURCES.join(', ')}`,
+    );
+  }
+}
+
 async function runKubectl(
   args: string[],
 ): Promise<{ stdout: string; stderr: string }> {
@@ -71,7 +81,6 @@ async function runKubectl(
       stderr?: string;
       message?: string;
     };
-    // Return stderr as content so the agent can see the error
     return {
       stdout: execErr.stdout || '',
       stderr: execErr.stderr || execErr.message || 'kubectl command failed',
@@ -100,7 +109,6 @@ const server = new McpServer({
   version: '1.0.0',
 });
 
-// kubectl get
 server.tool(
   'kubectl_get',
   'Get Kubernetes resources. Read-only.',
@@ -138,7 +146,6 @@ server.tool(
   },
 );
 
-// kubectl describe
 server.tool(
   'kubectl_describe',
   'Describe a Kubernetes resource in detail. Read-only.',
@@ -159,7 +166,6 @@ server.tool(
   },
 );
 
-// kubectl logs
 server.tool(
   'kubectl_logs',
   'Get logs from a pod. Read-only.',
@@ -191,7 +197,6 @@ server.tool(
   },
 );
 
-// kubectl exec — the restricted one
 server.tool(
   'kubectl_exec',
   'Execute a command in a pod. Restricted to allowed pods and binaries only.',
@@ -215,6 +220,29 @@ server.tool(
     validateExecBinary(command);
 
     const args = ['exec', pod, '-n', namespace, '--', ...command];
+    const { stdout, stderr } = await runKubectl(args);
+    return formatResult(stdout, stderr);
+  },
+);
+
+server.tool(
+  'kubectl_delete',
+  'Delete a Kubernetes resource. Restricted to allowed resource types only (pods).',
+  {
+    resource: z
+      .string()
+      .describe('Resource type (only "pods" is allowed)'),
+    name: z.string().describe('Resource name'),
+    namespace: z
+      .string()
+      .default('kube-system')
+      .describe('Namespace (validated against allowlist)'),
+  },
+  async ({ resource, name, namespace }) => {
+    validateNamespace(namespace);
+    validateDeleteResource(resource);
+
+    const args = ['delete', resource, name, '-n', namespace];
     const { stdout, stderr } = await runKubectl(args);
     return formatResult(stdout, stderr);
   },

@@ -30,9 +30,9 @@ export const AGENT_TIMEOUT = parseInt(
 
 // Alert-to-group mapping: alertname → group folder + display name
 export const ALERT_GROUPS: Record<string, { folder: string; name: string }> = {
-  etcdDatabaseHighFragmentationRatio: {
+  KubePodCrashLooping: {
     folder: 'alerts',
-    name: 'etcd-fragmentation',
+    name: 'pod-crashloop',
   },
 };
 
