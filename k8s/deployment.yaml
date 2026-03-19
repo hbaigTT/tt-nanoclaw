@@ -25,6 +25,7 @@ spec:
           #   pr-<number>  — PR preview, test with: kubectl set image deploy/tt-nanoclaw tt-nanoclaw=ghcr.io/hbaigtt/tt-nanoclaw:pr-123
           #   v1.0.0       — semver release (for prod)
           image: ghcr.io/hbaigtt/tt-nanoclaw:dev
+          imagePullPolicy: Always
           ports:
             - containerPort: 3000
               protocol: TCP
