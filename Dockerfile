@@ -35,9 +35,9 @@ COPY groups/ groups/
 
 # Run as non-root — Node.js and kubectl don't need root.
 # kubectl uses the SA token from the filesystem, not a privileged socket.
-RUN adduser --system --no-create-home nanoclaw && \
-    mkdir -p /app/store /app/data && \
-    chown -R nanoclaw /app/store /app/data /app/groups
+RUN adduser --system --home /home/nanoclaw nanoclaw && \
+    mkdir -p /app/store /app/data /home/nanoclaw/.claude && \
+    chown -R nanoclaw /app/store /app/data /app/groups /home/nanoclaw
 USER nanoclaw
 
 # No KUBECONFIG — in-cluster, kubectl uses the ServiceAccount token
