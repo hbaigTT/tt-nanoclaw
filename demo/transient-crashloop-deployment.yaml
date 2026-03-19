@@ -1,6 +1,15 @@
-# Pod that enters CrashLoopBackOff due to a stale lock file.
-# After the agent deletes the pod, the demo script patches out the
-# initContainer, so the replacement starts clean and runs indefinitely.
+# Pod that crashes because a lock file from a previous run is stuck.
+# Deleting the pod clears the ephemeral filesystem, removing the lock.
+# The replacement pod starts clean and runs successfully.
+#
+# How it works:
+# - On first start, the container checks for /tmp/app.lock
+# - If the lock exists, it means a previous instance didn't shut down cleanly
+# - It logs an error and exits (simulating a process that can't start due to stale state)
+# - Since /tmp is ephemeral, deleting the pod clears it — replacement starts clean
+# - After starting clean, it creates the lock and runs. If it crashes later,
+#   the lock persists across container restarts (same pod = same /tmp) causing
+#   the crash loop. Only a pod delete (new /tmp) breaks the cycle.
 
 apiVersion: apps/v1
 kind: Deployment
@@ -17,18 +26,6 @@ spec:
       labels:
         app: demo-transient
     spec:
-      initContainers:
-        - name: seed-crash
-          image: busybox:latest
-          command:
-            - sh
-            - -c
-            - |
-              echo "$$@$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/app.lock
-              echo "Seeded stale lock file"
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
       containers:
         - name: demo-transient
           image: busybox:latest
@@ -42,12 +39,9 @@ spec:
                 echo "Lock contents: $(cat /tmp/app.lock)"
                 exit 1
               fi
+              echo "$$@$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/app.lock
               echo "App started successfully (PID $$)"
-              echo "App running"
-              sleep 3600
-          volumeMounts:
-            - name: tmp
-              mountPath: /tmp
-      volumes:
-        - name: tmp
-          emptyDir: {}
+              echo "Simulating work..."
+              sleep 5
+              echo "Simulating unexpected crash..."
+              exit 1
