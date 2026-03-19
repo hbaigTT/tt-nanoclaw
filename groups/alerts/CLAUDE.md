@@ -6,7 +6,7 @@ You have access to the cluster through kubectl MCP tools. You do NOT have bash a
 
 ## Available Tools
 
-You have 5 kubectl tools. Each has structured parameters — you cannot run arbitrary commands.
+You have 4 kubectl tools. Each has structured parameters — you cannot run arbitrary commands.
 
 ### kubectl_get
 Get Kubernetes resources. Read-only.
@@ -29,12 +29,6 @@ Get pod logs. Read-only.
 - `tail` (default: 200): number of lines
 - `container` (optional): container name
 - `previous` (default: false): previous container instance
-
-### kubectl_exec
-Execute a command inside a pod. Restricted — only allowed pods and binaries.
-- `pod` (required): must match allowed patterns (e.g. etcd-*)
-- `namespace` (default: "kube-system"): must be allowed
-- `command` (required): array of strings. First element must be an allowed binary.
 
 ### kubectl_delete
 Delete a Kubernetes resource. Restricted — only pods can be deleted.

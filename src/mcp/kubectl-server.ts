@@ -21,10 +21,6 @@ const execFileAsync = promisify(execFile);
 
 const ALLOWED_NAMESPACES = ['kube-system', 'arc-systems', 'buildkit', 'harbor'];
 
-const ALLOWED_EXEC_POD_PATTERNS = [/^etcd-/];
-
-const ALLOWED_EXEC_BINARIES = ['etcdctl'];
-
 const ALLOWED_DELETE_RESOURCES = ['pods'];
 
 // --- Helpers ---
@@ -33,27 +29,6 @@ function validateNamespace(namespace: string): void {
   if (!ALLOWED_NAMESPACES.includes(namespace)) {
     throw new Error(
       `Namespace "${namespace}" not allowed. Allowed: ${ALLOWED_NAMESPACES.join(', ')}`,
-    );
-  }
-}
-
-function validateExecPod(pod: string): void {
-  const allowed = ALLOWED_EXEC_POD_PATTERNS.some((p) => p.test(pod));
-  if (!allowed) {
-    throw new Error(
-      `Pod "${pod}" not allowed for exec. Allowed patterns: ${ALLOWED_EXEC_POD_PATTERNS.map((p) => p.source).join(', ')}`,
-    );
-  }
-}
-
-function validateExecBinary(command: string[]): void {
-  if (command.length === 0) {
-    throw new Error('Command array cannot be empty');
-  }
-  const binary = command[0];
-  if (!ALLOWED_EXEC_BINARIES.includes(binary)) {
-    throw new Error(
-      `Binary "${binary}" not allowed for exec. Allowed: ${ALLOWED_EXEC_BINARIES.join(', ')}`,
     );
   }
 }
@@ -192,34 +167,6 @@ server.tool(
     if (container) args.push('-c', container);
     if (previous) args.push('--previous');
 
-    const { stdout, stderr } = await runKubectl(args);
-    return formatResult(stdout, stderr);
-  },
-);
-
-server.tool(
-  'kubectl_exec',
-  'Execute a command in a pod. Restricted to allowed pods and binaries only.',
-  {
-    pod: z
-      .string()
-      .describe('Pod name (must match allowed patterns, e.g. etcd-*)'),
-    namespace: z
-      .string()
-      .default('kube-system')
-      .describe('Namespace (validated against allowlist)'),
-    command: z
-      .array(z.string())
-      .describe(
-        'Command and arguments as an array. First element must be an allowed binary (e.g. etcdctl).',
-      ),
-  },
-  async ({ pod, namespace, command }) => {
-    validateNamespace(namespace);
-    validateExecPod(pod);
-    validateExecBinary(command);
-
-    const args = ['exec', pod, '-n', namespace, '--', ...command];
     const { stdout, stderr } = await runKubectl(args);
     return formatResult(stdout, stderr);
   },

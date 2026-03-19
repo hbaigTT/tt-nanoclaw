@@ -24,7 +24,7 @@ Agent investigates → decides: auto-resolve | escalate
   └── Escalate: posts structured diagnosis to Slack
 ```
 
-No container nesting. The agent runs directly in the tt-nanoclaw pod. The agent has **no Bash access** — all cluster interaction goes through 4 MCP tools (`kubectl_get`, `kubectl_describe`, `kubectl_logs`, `kubectl_exec`) with structured, validated parameters. `kubectl_exec` is restricted to allowed pod patterns and binaries. RBAC is the second enforcement layer.
+No container nesting. The agent runs directly in the tt-nanoclaw pod. The agent has **no Bash access** — all cluster interaction goes through 4 MCP tools (`kubectl_get`, `kubectl_describe`, `kubectl_logs`, `kubectl_delete`) with structured, validated parameters. `kubectl_delete` is restricted to pods only. RBAC is the second enforcement layer.
 
 ## Current Scope (POC)
 
@@ -100,7 +100,7 @@ Deployed as a Kubernetes Deployment in the `monitoring` namespace of the dev clu
 - **Deployment** — tt-nanoclaw pod running Node.js + Claude Agent SDK
 - **Service** — ClusterIP on port 3000
 - **ServiceAccount** — in `monitoring` namespace
-- **RBAC** — Role + RoleBinding in `kube-system` (get/list pods, create pods/exec)
+- **RBAC** — Role + RoleBinding in `kube-system` (get/list/delete pods)
 - **Secret** — `ANTHROPIC_API_KEY` and `SLACK_WEBHOOK_URL`
 
 ### Apply manifests
