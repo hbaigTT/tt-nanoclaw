@@ -1,15 +1,6 @@
-# Pod that crashes because a lock file from a previous run is stuck.
-# Deleting the pod clears the ephemeral filesystem, removing the lock.
-# The replacement pod starts clean and runs successfully.
-#
-# How it works:
-# - On first start, the container checks for /tmp/app.lock
-# - If the lock exists, it means a previous instance didn't shut down cleanly
-# - It logs an error and exits (simulating a process that can't start due to stale state)
-# - Since /tmp is ephemeral, deleting the pod clears it — replacement starts clean
-# - After starting clean, it creates the lock and runs. If it crashes later,
-#   the lock persists across container restarts (same pod = same /tmp) causing
-#   the crash loop. Only a pod delete (new /tmp) breaks the cycle.
+# Pod that crashes due to a stale PID file from a previous unclean shutdown.
+# Deleting the pod clears the ephemeral filesystem, removing the PID file.
+# The replacement pod starts clean and runs indefinitely.
 
 apiVersion: apps/v1
 kind: Deployment
@@ -29,19 +20,39 @@ spec:
       containers:
         - name: demo-transient
           image: busybox:latest
-          command:
-            - sh
-            - -c
-            - |
-              if [ -f /tmp/app.lock ]; then
-                echo "ERROR: Stale lock file /tmp/app.lock found from previous instance"
-                echo "Process cannot start - another instance may still be running or exited uncleanly"
-                echo "Lock contents: $(cat /tmp/app.lock)"
-                exit 1
-              fi
-              echo "$$@$(date -u +%Y-%m-%dT%H:%M:%SZ)" > /tmp/app.lock
-              echo "App started successfully (PID $$)"
-              echo "Simulating work..."
-              sleep 5
-              echo "Simulating unexpected crash..."
-              exit 1
+          command: ["sh", "/scripts/start.sh"]
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: scripts
+          configMap:
+            name: demo-transient-scripts
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-transient-scripts
+  namespace: demo
+data:
+  start.sh: |
+    #!/bin/sh
+    PID_FILE="/data/app.pid"
+
+    if [ -f "$PID_FILE" ]; then
+      OLD_PID=$(cat "$PID_FILE")
+      echo "ERROR: Found stale PID file at $PID_FILE (PID: $OLD_PID)"
+      echo "Previous instance did not shut down cleanly."
+      echo "Cannot acquire lock — another instance may still be running."
+      exit 1
+    fi
+
+    echo $$ > "$PID_FILE"
+    echo "App started successfully (PID: $$)"
+    echo "Connected to upstream services"
+    echo "Listening on port 8080"
+    sleep 3600
