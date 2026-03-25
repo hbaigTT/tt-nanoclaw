@@ -1,7 +1,31 @@
-# Pod that crashes due to a stale PID file from a previous unclean shutdown.
-# Deleting the pod clears the ephemeral filesystem, removing the PID file.
-# The replacement pod starts clean and runs indefinitely.
+# Pod that crashes if a stale PID file exists in its data volume.
+# Normal startup does NOT create a PID file — it only exists if
+# injected externally (simulating an unclean prior shutdown).
+# Deleting the pod clears the emptyDir, replacement runs clean.
 
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-transient-scripts
+  namespace: demo
+data:
+  start.sh: |
+    #!/bin/sh
+    PID_FILE="/data/app.pid"
+
+    if [ -f "$PID_FILE" ]; then
+      OLD_PID=$(cat "$PID_FILE")
+      echo "ERROR: Found stale PID file at $PID_FILE (PID: $OLD_PID)"
+      echo "Previous instance did not shut down cleanly."
+      echo "Cannot acquire lock — another instance may still be running."
+      exit 1
+    fi
+
+    echo "App started successfully (PID: $$)"
+    echo "Connected to upstream services"
+    echo "Listening on port 8080"
+    sleep 3600
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,27 +56,3 @@ spec:
             name: demo-transient-scripts
         - name: data
           emptyDir: {}
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: demo-transient-scripts
-  namespace: demo
-data:
-  start.sh: |
-    #!/bin/sh
-    PID_FILE="/data/app.pid"
-
-    if [ -f "$PID_FILE" ]; then
-      OLD_PID=$(cat "$PID_FILE")
-      echo "ERROR: Found stale PID file at $PID_FILE (PID: $OLD_PID)"
-      echo "Previous instance did not shut down cleanly."
-      echo "Cannot acquire lock — another instance may still be running."
-      exit 1
-    fi
-
-    echo $$ > "$PID_FILE"
-    echo "App started successfully (PID: $$)"
-    echo "Connected to upstream services"
-    echo "Listening on port 8080"
-    sleep 3600
