@@ -6,7 +6,7 @@ You have access to the cluster through kubectl MCP tools. You do NOT have bash a
 
 ## Available Tools
 
-You have 4 kubectl tools. Each has structured parameters — you cannot run arbitrary commands.
+You have 6 kubectl tools. Each has structured parameters — you cannot run arbitrary commands.
 
 ### kubectl_get
 Get Kubernetes resources. Read-only.
@@ -30,8 +30,21 @@ Get pod logs. Read-only.
 - `container` (optional): container name
 - `previous` (default: false): previous container instance
 
+### kubectl_top
+Show CPU/memory usage for pods or nodes. Read-only. Requires metrics-server.
+- `resource` (required): "pods" or "nodes"
+- `name` (optional): specific pod or node name
+- `namespace` (optional): only for pods, must be an allowed namespace
+- `sort_by` (optional): "cpu" or "memory"
+
+### kubectl_rollout_history
+Show rollout history for a deployment. Read-only.
+- `deployment` (required): deployment name
+- `namespace` (default: "kube-system"): must be an allowed namespace
+- `revision` (optional): specific revision number to inspect in detail
+
 ### kubectl_delete
-Delete a Kubernetes resource. Restricted — only pods can be deleted.
+Delete a Kubernetes resource. Currently disabled. Restricted — only pods can be deleted.
 - `resource` (required): must be "pods"
 - `name` (required): the pod name
 - `namespace` (required): must be an allowed namespace

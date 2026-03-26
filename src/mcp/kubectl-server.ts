@@ -174,6 +174,62 @@ server.tool(
   },
 );
 
+server.tool(
+  'kubectl_top',
+  'Show CPU/memory usage for pods or nodes. Read-only. Requires metrics-server.',
+  {
+    resource: z
+      .enum(['pods', 'nodes'])
+      .describe('Resource type: "pods" or "nodes"'),
+    name: z.string().optional().describe('Specific pod or node name'),
+    namespace: z
+      .string()
+      .optional()
+      .describe('Namespace (validated against allowlist). Only used for pods.'),
+    sort_by: z
+      .enum(['cpu', 'memory'])
+      .optional()
+      .describe('Sort by cpu or memory usage'),
+  },
+  async ({ resource, name, namespace, sort_by }) => {
+    const args = ['top', resource];
+    if (name) args.push(name);
+    if (resource === 'pods' && namespace) {
+      validateNamespace(namespace);
+      args.push('-n', namespace);
+    }
+    if (sort_by) args.push('--sort-by', sort_by);
+
+    const { stdout, stderr } = await runKubectl(args);
+    return formatResult(stdout, stderr);
+  },
+);
+
+server.tool(
+  'kubectl_rollout_history',
+  'Show rollout history for a deployment. Read-only.',
+  {
+    deployment: z.string().describe('Deployment name'),
+    namespace: z
+      .string()
+      .default('kube-system')
+      .describe('Namespace (validated against allowlist)'),
+    revision: z
+      .number()
+      .optional()
+      .describe('Specific revision number to inspect in detail'),
+  },
+  async ({ deployment, namespace, revision }) => {
+    validateNamespace(namespace);
+
+    const args = ['rollout', 'history', `deployment/${deployment}`, '-n', namespace];
+    if (revision) args.push(`--revision=${revision}`);
+
+    const { stdout, stderr } = await runKubectl(args);
+    return formatResult(stdout, stderr);
+  },
+);
+
 // kubectl_delete is disabled for initial production deployment.
 // Uncomment when write operations are approved.
 //
