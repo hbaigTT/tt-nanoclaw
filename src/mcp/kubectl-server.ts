@@ -178,26 +178,29 @@ server.tool(
   },
 );
 
-server.tool(
-  'kubectl_delete',
-  'Delete a Kubernetes resource. Restricted to allowed resource types only (pods).',
-  {
-    resource: z.string().describe('Resource type (only "pods" is allowed)'),
-    name: z.string().describe('Resource name'),
-    namespace: z
-      .string()
-      .default('kube-system')
-      .describe('Namespace (validated against allowlist)'),
-  },
-  async ({ resource, name, namespace }) => {
-    validateNamespace(namespace);
-    validateDeleteResource(resource);
-
-    const args = ['delete', resource, name, '-n', namespace];
-    const { stdout, stderr } = await runKubectl(args);
-    return formatResult(stdout, stderr);
-  },
-);
+// kubectl_delete is disabled for initial production deployment.
+// Uncomment when write operations are approved.
+//
+// server.tool(
+//   'kubectl_delete',
+//   'Delete a Kubernetes resource. Restricted to allowed resource types only (pods).',
+//   {
+//     resource: z.string().describe('Resource type (only "pods" is allowed)'),
+//     name: z.string().describe('Resource name'),
+//     namespace: z
+//       .string()
+//       .default('kube-system')
+//       .describe('Namespace (validated against allowlist)'),
+//   },
+//   async ({ resource, name, namespace }) => {
+//     validateNamespace(namespace);
+//     validateDeleteResource(resource);
+//
+//     const args = ['delete', resource, name, '-n', namespace];
+//     const { stdout, stderr } = await runKubectl(args);
+//     return formatResult(stdout, stderr);
+//   },
+// );
 
 // --- Start ---
 
