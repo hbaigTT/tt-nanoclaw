@@ -20,6 +20,9 @@ export interface AgentOutput {
   status: 'success' | 'error';
   result: string | null;
   error?: string;
+  sessionId?: string;
+  toolCalls: number;
+  durationMs: number;
 }
 
 /**
@@ -29,7 +32,8 @@ export interface AgentOutput {
 function logSdkMessage(
   group: string,
   message: { type: string; [key: string]: unknown },
-): void {
+): { toolCalls: number } {
+  let toolCalls = 0;
   const subtype = 'subtype' in message ? String(message.subtype) : '';
 
   if (message.type === 'assistant') {
@@ -50,6 +54,7 @@ function logSdkMessage(
         if (block.type === 'text' && block.text) {
           logger.debug({ group, text: block.text }, 'Agent thinking');
         } else if (block.type === 'tool_use') {
+          toolCalls++;
           logger.info(
             { group, tool: block.name, input: block.input },
             'Agent tool call',
@@ -59,6 +64,7 @@ function logSdkMessage(
     } else {
       logger.debug({ group, type: message.type, subtype }, 'Agent SDK message');
     }
+    return { toolCalls };
   } else if (message.type === 'user') {
     const msg = message as {
       type: string;
@@ -91,6 +97,7 @@ function logSdkMessage(
   } else {
     logger.debug({ group, type: message.type, subtype }, 'Agent SDK message');
   }
+  return { toolCalls: 0 };
 }
 
 export async function runInProcessAgent(
@@ -109,11 +116,17 @@ export async function runInProcessAgent(
     'Starting in-process agent',
   );
 
+  const startTime = Date.now();
+  let totalToolCalls = 0;
+  let sessionId: string | undefined;
+
   const agentWork = async (): Promise<AgentOutput> => {
     let lastOutput: AgentOutput = {
       status: 'error',
       result: null,
       error: 'No result received from agent',
+      toolCalls: 0,
+      durationMs: 0,
     };
 
     try {
@@ -142,14 +155,16 @@ export async function runInProcessAgent(
           env: process.env as Record<string, string>,
         },
       })) {
-        logSdkMessage(
+        const msgStats = logSdkMessage(
           input.groupFolder,
           message as { type: string; [key: string]: unknown },
         );
+        totalToolCalls += msgStats.toolCalls;
 
         if (message.type === 'system' && message.subtype === 'init') {
+          sessionId = message.session_id;
           logger.info(
-            { group: input.groupFolder, sessionId: message.session_id },
+            { group: input.groupFolder, sessionId },
             'Agent session initialized',
           );
         }
@@ -159,6 +174,9 @@ export async function runInProcessAgent(
             const output: AgentOutput = {
               status: 'success',
               result: message.result,
+              sessionId,
+              toolCalls: totalToolCalls,
+              durationMs: Date.now() - startTime,
             };
             lastOutput = output;
             await onOutput?.(output);
@@ -171,6 +189,9 @@ export async function runInProcessAgent(
               status: 'error',
               result: null,
               error: message.subtype,
+              sessionId,
+              toolCalls: totalToolCalls,
+              durationMs: Date.now() - startTime,
             };
             lastOutput = output;
             await onOutput?.(output);
@@ -183,10 +204,21 @@ export async function runInProcessAgent(
         { group: input.groupFolder, err },
         'Agent SDK threw an error',
       );
-      const output: AgentOutput = { status: 'error', result: null, error };
+      const output: AgentOutput = {
+        status: 'error',
+        result: null,
+        error,
+        sessionId,
+        toolCalls: totalToolCalls,
+        durationMs: Date.now() - startTime,
+      };
       await onOutput?.(output);
       return output;
     }
+
+    lastOutput.toolCalls = totalToolCalls;
+    lastOutput.durationMs = Date.now() - startTime;
+    lastOutput.sessionId = sessionId;
 
     if (lastOutput.status === 'error') {
       logger.error(
@@ -214,7 +246,14 @@ export async function runInProcessAgent(
     clearTimeout(timeoutHandle!);
     const error = err instanceof Error ? err.message : String(err);
     logger.error({ group: input.groupFolder, error }, 'Agent timed out');
-    const output: AgentOutput = { status: 'error', result: null, error };
+    const output: AgentOutput = {
+      status: 'error',
+      result: null,
+      error,
+      sessionId,
+      toolCalls: totalToolCalls,
+      durationMs: Date.now() - startTime,
+    };
     await onOutput?.(output);
     return output;
   }

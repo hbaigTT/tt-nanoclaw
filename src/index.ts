@@ -26,7 +26,7 @@ import {
 } from './db.js';
 import { GroupQueue } from './group-queue.js';
 import { resolveGroupFolderPath } from './group-folder.js';
-import { runInProcessAgent } from './agent-runner.js';
+import { AgentOutput, runInProcessAgent } from './agent-runner.js';
 import { findChannel, formatMessages } from './router.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
@@ -139,17 +139,26 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     'Processing messages',
   );
 
+  // Extract alert metadata for the audit log
+  const alertname = chatJid.startsWith('alertmanager:')
+    ? chatJid.slice('alertmanager:'.length)
+    : chatJid;
+  const firstMessage = missedMessages[0]?.content || '';
+  const podMatch = firstMessage.match(/^Pod: (.+)$/m);
+  const nsMatch = firstMessage.match(/^Namespace: (.+)$/m);
+  const alertPod = podMatch?.[1] || '';
+  const alertNamespace = nsMatch?.[1] || '';
+
   await channel.setTyping?.(chatJid, true);
   let hadError = false;
   let outputSentToUser = false;
 
-  const output = await runAgent(group, prompt, chatJid, async (result) => {
+  const agentResult = await runAgent(group, prompt, chatJid, async (result) => {
     if (result.result) {
       const raw =
         typeof result.result === 'string'
           ? result.result
           : JSON.stringify(result.result);
-      // Strip <internal>...</internal> blocks
       const text = raw.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
       logger.info({ group: group.name }, `Agent output: ${raw.slice(0, 200)}`);
       if (text) {
@@ -165,7 +174,28 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
 
   await channel.setTyping?.(chatJid, false);
 
-  if (output === 'error' || hadError) {
+  // Determine outcome for audit log
+  let outcome: 'resolved' | 'escalated' | 'error' = 'error';
+  if (agentResult.status === 'success' && agentResult.result) {
+    outcome = agentResult.result.includes('ESCALATION') ? 'escalated' : 'resolved';
+  }
+
+  // Emit structured audit log line
+  logger.info(
+    {
+      alertname,
+      pod: alertPod,
+      namespace: alertNamespace,
+      outcome,
+      duration_ms: agentResult.durationMs,
+      tool_calls: agentResult.toolCalls,
+      session_id: agentResult.sessionId,
+      output: agentResult.result,
+    },
+    'investigation_complete',
+  );
+
+  if (agentResult.status === 'error' || hadError) {
     if (outputSentToUser) {
       logger.warn(
         { group: group.name },
@@ -189,16 +219,12 @@ async function runAgent(
   group: RegisteredGroup,
   prompt: string,
   chatJid: string,
-  onOutput?: (output: {
-    status: 'success' | 'error';
-    result: string | null;
-  }) => Promise<void>,
-): Promise<'success' | 'error'> {
-  const result = await runInProcessAgent(
+  onOutput?: (output: AgentOutput) => Promise<void>,
+): Promise<AgentOutput> {
+  return runInProcessAgent(
     { prompt, groupFolder: group.folder, chatJid },
     onOutput,
   );
-  return result.status;
 }
 
 async function startMessageLoop(): Promise<void> {
@@ -296,7 +322,9 @@ async function main(): Promise<void> {
 
   // Auto-register alert groups from config (idempotent — skips already-registered JIDs)
   const alertConfig = loadAlertConfig();
-  for (const [alertname, { folder, name }] of Object.entries(alertConfig.alerts)) {
+  for (const [alertname, { folder, name }] of Object.entries(
+    alertConfig.alerts,
+  )) {
     const jid = `alertmanager:${alertname}`;
     if (!registeredGroups[jid]) {
       registerGroup(jid, {
