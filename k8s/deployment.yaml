@@ -45,6 +45,10 @@ spec:
               value: "debug"
             - name: DEBUG_CLAUDE_AGENT_SDK
               value: "1"
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
           # No KUBECONFIG — in-cluster ServiceAccount auth is automatic
           livenessProbe:
             httpGet:
@@ -65,3 +69,7 @@ spec:
             limits:
               cpu: "1"
               memory: 1Gi
+      volumes:
+        - name: config
+          configMap:
+            name: tt-nanoclaw-config

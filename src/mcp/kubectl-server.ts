@@ -14,18 +14,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { z } from 'zod';
 
+import { loadAlertConfig } from '../alert-config.js';
+
 const execFileAsync = promisify(execFile);
 
 // --- Validation allowlists ---
-// Expand these when adding new alert types. Each expansion is a reviewable PR.
+// Loaded from ConfigMap (mounted at /config/alerts.yaml) or defaults for local dev.
 
-const ALLOWED_NAMESPACES = [
-  'kube-system',
-  'arc-systems',
-  'buildkit',
-  'harbor',
-  'demo',
-];
+const { namespaces: ALLOWED_NAMESPACES } = loadAlertConfig();
 
 const ALLOWED_DELETE_RESOURCES = ['pods'];
 

@@ -34,12 +34,15 @@ vi.mock('./config.js', () => ({
   STORE_DIR: '/tmp/tt-nanoclaw-test/store',
   GROUPS_DIR: '/tmp/tt-nanoclaw-test/groups',
   DATA_DIR: '/tmp/tt-nanoclaw-test/data',
-  ALERT_GROUPS: {
-    KubePodCrashLooping: {
-      folder: 'alerts',
-      name: 'pod-crashloop',
+  loadAlertConfig: () => ({
+    alerts: {
+      KubePodCrashLooping: {
+        folder: 'alerts',
+        name: 'pod-crashloop',
+      },
     },
-  },
+    namespaces: ['kube-system', 'demo'],
+  }),
 }));
 
 // --- Helpers ---
@@ -319,10 +322,11 @@ describe('integration: alert group auto-registration', () => {
     _initTestDatabase();
   });
 
-  it('ALERT_GROUPS config produces correct registered groups', async () => {
-    const { ALERT_GROUPS } = await import('./config.js');
+  it('alert config produces correct registered groups', async () => {
+    const { loadAlertConfig } = await import('./config.js');
+    const config = loadAlertConfig();
 
-    for (const [alertname, { folder, name }] of Object.entries(ALERT_GROUPS)) {
+    for (const [alertname, { folder, name }] of Object.entries(config.alerts)) {
       const jid = `alertmanager:${alertname}`;
       setRegisteredGroup(jid, {
         name,

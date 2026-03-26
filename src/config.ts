@@ -28,13 +28,9 @@ export const AGENT_TIMEOUT = parseInt(
   10,
 ); // 10 min default
 
-// Alert-to-group mapping: alertname → group folder + display name
-export const ALERT_GROUPS: Record<string, { folder: string; name: string }> = {
-  KubePodCrashLooping: {
-    folder: 'alerts',
-    name: 'pod-crashloop',
-  },
-};
+// Alert config loaded from ConfigMap (mounted at /config/alerts.yaml)
+// or defaults for local dev. See k8s/configmap.yaml.
+export { loadAlertConfig } from './alert-config.js';
 
 function escapeRegex(str: string): string {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

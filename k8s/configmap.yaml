@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tt-nanoclaw-config
+  namespace: monitoring
+data:
+  alerts.yaml: |
+    # Alert-to-group mapping: which alerts tt-nanoclaw handles.
+    # Adding a new alert = add an entry here + write a runbook in groups/alerts/CLAUDE.md.
+    alerts:
+      KubePodCrashLooping:
+        folder: alerts
+        name: pod-crashloop
+
+    # Namespaces the agent's MCP tools can access.
+    # Must match RBAC — add a Role+RoleBinding in k8s/rbac.yaml for each.
+    namespaces:
+      - kube-system
+      - arc-systems
+      - buildkit
+      - harbor
+      - demo

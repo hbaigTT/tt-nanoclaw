@@ -2,8 +2,8 @@ import fs from 'fs';
 import path from 'path';
 
 import {
-  ALERT_GROUPS,
   ASSISTANT_NAME,
+  loadAlertConfig,
   POLL_INTERVAL,
   TIMEZONE,
   TRIGGER_PATTERN,
@@ -294,8 +294,9 @@ async function main(): Promise<void> {
   logger.info('Database initialized');
   loadState();
 
-  // Auto-register alert groups (idempotent — skips already-registered JIDs)
-  for (const [alertname, { folder, name }] of Object.entries(ALERT_GROUPS)) {
+  // Auto-register alert groups from config (idempotent — skips already-registered JIDs)
+  const alertConfig = loadAlertConfig();
+  for (const [alertname, { folder, name }] of Object.entries(alertConfig.alerts)) {
     const jid = `alertmanager:${alertname}`;
     if (!registeredGroups[jid]) {
       registerGroup(jid, {
