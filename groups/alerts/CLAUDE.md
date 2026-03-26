@@ -91,6 +91,16 @@ kubectl_logs(pod="<pod-name>", namespace="<namespace>", tail=200)
 
 Look for the root cause: connection refused errors (transient), config errors (structural), out of memory (transient), missing dependencies (structural).
 
+### Step 3.5: Trace dependencies (if the error points to another service)
+
+If the logs show the pod can't reach a dependency (connection refused, DNS failure, timeout):
+1. Identify the dependency from the error (e.g., `harbor-core:80`, `db.demo.svc:5432`)
+2. Check the dependency's pods: `kubectl_get(resource="pods", namespace="<ns>", labels="<app-label>")`
+3. If the dependency is also failing, investigate it — describe it, check its logs and events
+4. Continue tracing until you find the root cause (it may be 2-3 levels deep)
+
+This gives a complete picture: not just "pod X is crashing" but "pod X crashes because pod Y is down because pod Z can't schedule because its PVC is stuck."
+
 ### Step 4: Decide
 
 **Delete the pod (transient issues):**
@@ -148,9 +158,20 @@ Investigation:
 - Last exit reason: <reason>
 - Logs show: <key error messages>
 - Events show: <relevant events>
+- Dependency chain: <if applicable, trace from the failing pod to the root cause>
+
+Root cause: <what is actually broken and why>
 
 This appears to be a structural issue that a restart won't fix.
-Action needed: <specific next step for a human>
+
+Suggested resolution:
+1. <first step to fix the root cause>
+2. <second step>
+3. <how to verify the fix worked>
+
+Include specific commands or actions where possible. The fix may involve
+kubectl commands, infrastructure changes, config updates, or coordination
+with other teams — suggest whatever is appropriate for the root cause.
 
 Alert source: <generatorURL from the alert>
 ```
