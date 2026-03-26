@@ -13,8 +13,7 @@ export function readEnvFile(keys: string[]): Record<string, string> {
   let content: string;
   try {
     content = fs.readFileSync(envFile, 'utf-8');
-  } catch (err) {
-    logger.debug({ err }, '.env file not found, using defaults');
+  } catch {
     return {};
   }
 

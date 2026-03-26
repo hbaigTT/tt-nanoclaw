@@ -24,7 +24,7 @@ spec:
           #   dev        — current main branch (dev cluster default)
           #   pr-<number>  — PR preview, test with: kubectl set image deploy/tt-nanoclaw tt-nanoclaw=ghcr.io/hbaigtt/tt-nanoclaw:pr-123
           #   v1.0.0       — semver release (for prod)
-          image: ghcr.io/hbaigtt/tt-nanoclaw:dev
+          image: ghcr.io/hbaigtt/tt-nanoclaw:v1.0.0
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
@@ -40,13 +40,9 @@ spec:
                 secretKeyRef:
                   name: tt-nanoclaw
                   key: SLACK_WEBHOOK_URL
-                  optional: true
-            # Dev: debug logging + SDK traces. For release: remove these
-            # or set LOG_LEVEL=info and remove DEBUG_CLAUDE_AGENT_SDK.
+                  optional: false
             - name: LOG_LEVEL
-              value: "debug"
-            - name: DEBUG_CLAUDE_AGENT_SDK
-              value: "1"
+              value: "info"
           volumeMounts:
             - name: config
               mountPath: /config
