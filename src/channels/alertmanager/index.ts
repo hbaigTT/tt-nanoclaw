@@ -140,6 +140,14 @@ export class AlertmanagerChannel implements Channel {
 
     for (const [alertname, alerts] of byAlertname) {
       const jid = `alertmanager:${alertname}`;
+
+      // Only process alerts that have a registered group — skip the rest
+      const groups = this.opts.registeredGroups();
+      if (!groups[jid]) {
+        logger.debug({ alertname }, 'No registered group for alert, skipping');
+        continue;
+      }
+
       const timestamp = new Date().toISOString();
 
       this.opts.onChatMetadata(jid, timestamp, alertname, 'alertmanager', true);

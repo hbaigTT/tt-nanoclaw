@@ -111,7 +111,9 @@ describe('integration: webhook → DB roundtrip', () => {
         },
         onChatMetadata: (jid, ts, name, ch, isGroup) =>
           storeChatMetadata(jid, ts, name, ch, isGroup),
-        registeredGroups: () => ({}),
+        registeredGroups: () => ({
+          'alertmanager:KubePodCrashLooping': { name: 'pod-crashloop', folder: 'alerts', trigger: '', added_at: '', requiresTrigger: false },
+        }),
       },
       'https://hooks.slack.com/test',
       0,
