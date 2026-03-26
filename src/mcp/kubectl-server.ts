@@ -222,7 +222,13 @@ server.tool(
   async ({ deployment, namespace, revision }) => {
     validateNamespace(namespace);
 
-    const args = ['rollout', 'history', `deployment/${deployment}`, '-n', namespace];
+    const args = [
+      'rollout',
+      'history',
+      `deployment/${deployment}`,
+      '-n',
+      namespace,
+    ];
     if (revision) args.push(`--revision=${revision}`);
 
     const { stdout, stderr } = await runKubectl(args);

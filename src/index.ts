@@ -177,7 +177,9 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   // Determine outcome for audit log
   let outcome: 'resolved' | 'escalated' | 'error' = 'error';
   if (agentResult.status === 'success' && agentResult.result) {
-    outcome = agentResult.result.includes('ESCALATION') ? 'escalated' : 'resolved';
+    outcome = agentResult.result.includes('ESCALATION')
+      ? 'escalated'
+      : 'resolved';
   }
 
   // Emit structured audit log line
