@@ -14,8 +14,20 @@ function makeMockOpts() {
     onMessage: vi.fn(),
     onChatMetadata: vi.fn(),
     registeredGroups: vi.fn().mockReturnValue({
-      'alertmanager:TestAlert': { name: 'test', folder: 'test', trigger: '', added_at: '', requiresTrigger: false },
-      'alertmanager:etcdDatabaseHighFragmentationRatio': { name: 'etcd', folder: 'alerts', trigger: '', added_at: '', requiresTrigger: false },
+      'alertmanager:TestAlert': {
+        name: 'test',
+        folder: 'test',
+        trigger: '',
+        added_at: '',
+        requiresTrigger: false,
+      },
+      'alertmanager:etcdDatabaseHighFragmentationRatio': {
+        name: 'etcd',
+        folder: 'alerts',
+        trigger: '',
+        added_at: '',
+        requiresTrigger: false,
+      },
     }),
   };
 }

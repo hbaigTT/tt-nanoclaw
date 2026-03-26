@@ -1,7 +1,9 @@
 # Pod that crashes if a stale PID file exists in its data volume.
-# Normal startup does NOT create a PID file — it only exists if
-# injected externally (simulating an unclean prior shutdown).
-# Deleting the pod clears the emptyDir, replacement runs clean.
+# Normal startup does NOT create a PID file.
+# The app polls for a "crash trigger" file — when it appears, the app
+# writes a PID file and crashes (simulating an unclean shutdown).
+# Subsequent restarts find the PID file and fail immediately.
+# Deleting the pod = fresh emptyDir = no PID file = runs clean.
 
 apiVersion: v1
 kind: ConfigMap
@@ -24,7 +26,15 @@ data:
     echo "App started successfully (PID: $$)"
     echo "Connected to upstream services"
     echo "Listening on port 8080"
-    sleep 3600
+
+    while true; do
+      if [ -f /data/crash-trigger ]; then
+        echo "FATAL: Unexpected error in worker thread"
+        echo $$ > "$PID_FILE"
+        exit 1
+      fi
+      sleep 1
+    done
 ---
 apiVersion: apps/v1
 kind: Deployment

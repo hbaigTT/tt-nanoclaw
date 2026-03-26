@@ -2,15 +2,16 @@
 # tt-nanoclaw demo: transient crash loop that the agent RESOLVES by deleting the pod
 #
 # How it works:
-#   - Pod starts clean (no PID file), runs normally
-#   - We inject a stale PID file and crash the container
+#   - Pod starts clean, runs normally (no PID file)
+#   - We create a "crash trigger" file inside the pod
+#   - App detects trigger, writes PID file, crashes
 #   - Container restarts (same pod, same emptyDir) → finds PID file → crash loop
 #   - Agent investigates → sees stale PID file error → deletes pod
-#   - Replacement gets fresh emptyDir → no PID file → runs clean forever
+#   - Replacement gets fresh emptyDir → no PID file, no trigger → runs clean forever
 #
-# Key: the app does NOT create PID files during normal startup.
-# The PID file only exists because we injected it (simulating unclean shutdown).
-# So the replacement pod never encounters it.
+# Why this works: the app polls for /data/crash-trigger. Creating it makes the
+# app crash and leave a PID file behind. Container restarts see the PID file
+# and crash immediately. Deleting the pod = fresh emptyDir = clean start.
 #
 # Prerequisites:
 #   - tt-nanoclaw is deployed and running
@@ -24,38 +25,30 @@ export KUBECONFIG
 echo "=== Step 1: Clean up any previous demo ==="
 kubectl delete deployment demo-transient -n demo 2>/dev/null || true
 kubectl delete configmap demo-transient-scripts -n demo 2>/dev/null || true
-sleep 3
+kubectl -n demo wait --for=delete pod -l app=demo-transient --timeout=30s 2>/dev/null || true
 
 echo ""
 echo "=== Step 2: Deploy pod ==="
 kubectl apply -f demo/transient-crashloop-deployment.yaml
 echo "Waiting for pod to be ready..."
-kubectl -n demo wait --for=condition=Ready pod -l app=demo-transient --timeout=30s
+kubectl -n demo wait --for=condition=Ready pod -l app=demo-transient --timeout=60s
 
 POD_NAME=$(kubectl -n demo get pods -l app=demo-transient -o jsonpath='{.items[0].metadata.name}')
 echo "Pod: $POD_NAME (Running, healthy)"
 
 echo ""
-echo "=== Step 3: Inject stale PID file and crash the container ==="
-kubectl -n demo exec "$POD_NAME" -- sh -c 'echo 99999 > /data/app.pid && echo "PID file injected"'
-kubectl -n demo exec "$POD_NAME" -- sh -c 'kill 1' 2>/dev/null || true
-echo "Container crashed. Waiting for CrashLoopBackOff..."
+echo "=== Step 3: Trigger crash (creates stale PID file + crashes) ==="
+kubectl -n demo exec "$POD_NAME" -- touch /data/crash-trigger
+echo "Crash trigger created. App will detect it within 1 second..."
+sleep 2
+echo "Waiting for CrashLoopBackOff..."
 sleep 25
 
 echo ""
 echo "=== Step 4: Verify pod is crash looping ==="
 kubectl -n demo get pods -l app=demo-transient
-echo ""
-
-# Verify it's the same pod (container restart, not pod replacement)
-CURRENT_POD=$(kubectl -n demo get pods -l app=demo-transient -o jsonpath='{.items[0].metadata.name}')
-if [ "$CURRENT_POD" = "$POD_NAME" ]; then
-  echo "Same pod ($POD_NAME) — container restarted within the pod (as expected)"
-else
-  echo "WARNING: Pod was replaced ($POD_NAME → $CURRENT_POD)"
-  echo "Using new pod name for the alert"
-  POD_NAME="$CURRENT_POD"
-fi
+POD_NAME=$(kubectl -n demo get pods -l app=demo-transient -o jsonpath='{.items[0].metadata.name}')
+echo "Pod: $POD_NAME"
 
 echo ""
 echo "=== Step 5: Send alert to tt-nanoclaw ==="
