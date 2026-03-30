@@ -7,6 +7,7 @@ import { logger } from './logger.js';
 export interface AlertGroupConfig {
   folder: string;
   name: string;
+  runbook?: string; // path to runbook file relative to group folder, e.g. "runbooks/pod-crashloop.md"
 }
 
 export interface AlertConfig {
@@ -19,6 +20,7 @@ const DEFAULT_CONFIG: AlertConfig = {
     KubePodCrashLooping: {
       folder: 'alerts',
       name: 'pod-crashloop',
+      runbook: 'runbooks/pod-crashloop.md',
     },
   },
   namespaces: ['kube-system', 'arc-systems', 'buildkit', 'harbor', 'demo'],

@@ -149,11 +149,16 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   const alertPod = podMatch?.[1] || '';
   const alertNamespace = nsMatch?.[1] || '';
 
+  // Look up the alert-specific runbook path from config
+  const alertConfig = loadAlertConfig();
+  const alertGroupConfig = alertConfig.alerts[alertname];
+  const runbookPath = alertGroupConfig?.runbook;
+
   await channel.setTyping?.(chatJid, true);
   let hadError = false;
   let outputSentToUser = false;
 
-  const agentResult = await runAgent(group, prompt, chatJid, async (result) => {
+  const agentResult = await runAgent(group, prompt, chatJid, runbookPath, async (result) => {
     if (result.result) {
       const raw =
         typeof result.result === 'string'
@@ -221,10 +226,11 @@ async function runAgent(
   group: RegisteredGroup,
   prompt: string,
   chatJid: string,
+  runbookPath: string | undefined,
   onOutput?: (output: AgentOutput) => Promise<void>,
 ): Promise<AgentOutput> {
   return runInProcessAgent(
-    { prompt, groupFolder: group.folder, chatJid },
+    { prompt, groupFolder: group.folder, chatJid, runbookPath },
     onOutput,
   );
 }

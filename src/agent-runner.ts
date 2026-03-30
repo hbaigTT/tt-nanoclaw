@@ -14,6 +14,7 @@ export interface AgentInput {
   prompt: string;
   groupFolder: string;
   chatJid: string;
+  runbookPath?: string; // path to alert-specific runbook file
 }
 
 export interface AgentOutput {
@@ -106,10 +107,29 @@ export async function runInProcessAgent(
 ): Promise<AgentOutput> {
   const groupDir = resolveGroupFolderPath(input.groupFolder);
 
+  // Load general context (always)
   const claudeMdPath = path.join(groupDir, 'CLAUDE.md');
-  const claudeMd = fs.existsSync(claudeMdPath)
+  let claudeMd = fs.existsSync(claudeMdPath)
     ? fs.readFileSync(claudeMdPath, 'utf-8')
     : undefined;
+
+  // Append alert-specific runbook if available
+  if (input.runbookPath) {
+    const runbookFullPath = path.join(groupDir, input.runbookPath);
+    if (fs.existsSync(runbookFullPath)) {
+      const runbook = fs.readFileSync(runbookFullPath, 'utf-8');
+      claudeMd = claudeMd ? `${claudeMd}\n\n---\n\n${runbook}` : runbook;
+      logger.info(
+        { group: input.groupFolder, runbook: input.runbookPath },
+        'Loaded alert-specific runbook',
+      );
+    } else {
+      logger.warn(
+        { group: input.groupFolder, runbook: input.runbookPath },
+        'Alert-specific runbook not found, using general context only',
+      );
+    }
+  }
 
   logger.info(
     { group: input.groupFolder, jid: input.chatJid },

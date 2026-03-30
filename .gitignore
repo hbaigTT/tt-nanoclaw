@@ -17,6 +17,9 @@ groups/*
 groups/main/*
 groups/global/*
 groups/alerts/*
+!groups/alerts/runbooks/
+groups/alerts/runbooks/*
+!groups/alerts/runbooks/*.md
 !groups/main/CLAUDE.md
 !groups/global/CLAUDE.md
 !groups/alerts/CLAUDE.md
