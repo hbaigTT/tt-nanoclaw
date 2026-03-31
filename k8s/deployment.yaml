@@ -16,10 +16,14 @@ spec:
         app: tt-nanoclaw
     spec:
       serviceAccountName: tt-nanoclaw
+      securityContext:
+        runAsNonRoot: true
       imagePullSecrets:
         - name: ghcr-creds
       containers:
         - name: tt-nanoclaw
+          securityContext:
+            allowPrivilegeEscalation: false
           # Image tags:
           #   dev        — current main branch (dev cluster default)
           #   pr-<number>  — PR preview, test with: kubectl set image deploy/tt-nanoclaw tt-nanoclaw=ghcr.io/hbaigtt/tt-nanoclaw:pr-123
