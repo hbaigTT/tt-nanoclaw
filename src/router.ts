@@ -28,11 +28,6 @@ export function stripInternalTags(text: string): string {
   return text.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
 }
 
-export function formatOutbound(rawText: string): string {
-  const text = stripInternalTags(rawText);
-  if (!text) return '';
-  return text;
-}
 
 export function findChannel(
   channels: Channel[],

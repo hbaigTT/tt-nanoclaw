@@ -4,7 +4,6 @@ import { ASSISTANT_NAME, TRIGGER_PATTERN } from './config.js';
 import {
   escapeXml,
   formatMessages,
-  formatOutbound,
   stripInternalTags,
 } from './router.js';
 import { NewMessage } from './types.js';
@@ -187,21 +186,6 @@ describe('stripInternalTags', () => {
   });
 });
 
-describe('formatOutbound', () => {
-  it('returns text with internal tags stripped', () => {
-    expect(formatOutbound('hello world')).toBe('hello world');
-  });
-
-  it('returns empty string when all text is internal', () => {
-    expect(formatOutbound('<internal>hidden</internal>')).toBe('');
-  });
-
-  it('strips internal tags from remaining text', () => {
-    expect(
-      formatOutbound('<internal>thinking</internal>The answer is 42'),
-    ).toBe('The answer is 42');
-  });
-});
 
 // --- Trigger gating with requiresTrigger flag ---
 
