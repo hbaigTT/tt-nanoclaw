@@ -155,7 +155,6 @@ export function storeChatMetadata(
   }
 }
 
-
 export interface ChatInfo {
   jid: string;
   name: string;
@@ -179,7 +178,6 @@ export function getAllChats(): ChatInfo[] {
     .all() as ChatInfo[];
 }
 
-
 /**
  * Store a message with full content.
  * Only call this for registered groups where message history is needed.
@@ -198,7 +196,6 @@ export function storeMessage(msg: NewMessage): void {
     msg.is_bot_message ? 1 : 0,
   );
 }
-
 
 export function getNewMessages(
   jids: string[],
@@ -290,7 +287,6 @@ export function setSession(groupFolder: string, sessionId: string): void {
     'INSERT OR REPLACE INTO sessions (group_folder, session_id) VALUES (?, ?)',
   ).run(groupFolder, sessionId);
 }
-
 
 // --- Registered group accessors ---
 

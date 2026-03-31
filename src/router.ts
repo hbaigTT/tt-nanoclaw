@@ -28,7 +28,6 @@ export function stripInternalTags(text: string): string {
   return text.replace(/<internal>[\s\S]*?<\/internal>/g, '').trim();
 }
 
-
 export function findChannel(
   channels: Channel[],
   jid: string,

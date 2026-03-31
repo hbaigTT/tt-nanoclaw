@@ -1,11 +1,7 @@
 import { describe, it, expect } from 'vitest';
 
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from './config.js';
-import {
-  escapeXml,
-  formatMessages,
-  stripInternalTags,
-} from './router.js';
+import { escapeXml, formatMessages, stripInternalTags } from './router.js';
 import { NewMessage } from './types.js';
 
 function makeMsg(overrides: Partial<NewMessage> = {}): NewMessage {
@@ -185,7 +181,6 @@ describe('stripInternalTags', () => {
     expect(stripInternalTags('<internal>only this</internal>')).toBe('');
   });
 });
-
 
 // --- Trigger gating with requiresTrigger flag ---
 
